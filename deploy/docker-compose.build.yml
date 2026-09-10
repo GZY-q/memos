@@ -1,0 +1,23 @@
+# 从当前源码构建镜像（适合 fork / 定制代码）
+# 用法: docker compose -f docker-compose.build.yml up -d --build
+# 注意: 需要把整个仓库上传到服务器，或在服务器上 git clone 后执行
+
+services:
+  memos:
+    build:
+      context: ..
+      dockerfile: scripts/Dockerfile
+      args:
+        VERSION: "${MEMOS_VERSION:-dev}"
+        COMMIT: "${MEMOS_COMMIT:-unknown}"
+    image: memos:${MEMOS_VERSION:-dev}
+    container_name: memos
+    restart: unless-stopped
+    ports:
+      - "${MEMOS_HOST_PORT:-5230}:5230"
+    volumes:
+      - ./data:/var/opt/memos
+    environment:
+      MEMOS_PORT: "5230"
+      MEMOS_INSTANCE_URL: "${MEMOS_INSTANCE_URL:-}"
+      TZ: "${TZ:-Asia/Shanghai}"

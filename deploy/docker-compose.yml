@@ -1,0 +1,23 @@
+# 官方镜像一键部署（推荐）
+# 用法: docker compose up -d
+# 数据默认持久化在 ./data，端口 5230
+
+services:
+  memos:
+    image: neosmemo/memos:stable
+    container_name: memos
+    restart: unless-stopped
+    ports:
+      - "${MEMOS_HOST_PORT:-5230}:5230"
+    volumes:
+      - ./data:/var/opt/memos
+    environment:
+      MEMOS_PORT: "5230"
+      # 对外完整地址（https 域名）。不设置时实例处于私有模式。
+      MEMOS_INSTANCE_URL: "${MEMOS_INSTANCE_URL:-}"
+      TZ: "${TZ:-Asia/Shanghai}"
+    # 可选：限制容器资源
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 512M
