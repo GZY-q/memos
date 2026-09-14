@@ -20,6 +20,7 @@ import { useMemoActions } from "../hooks";
 import { useMemoViewContext, useMemoViewDerived } from "../MemoViewContext";
 import { createMemoNavigationState } from "../navigation";
 import type { MemoHeaderProps } from "../types";
+import MemoReadAloudButton from "./MemoReadAloudButton";
 import MemoSpaceBadge from "./MemoSpaceBadge";
 
 /** The card's trailing actions are the kit's quiet 24px squares, whether or not they are kit buttons. */
@@ -89,6 +90,8 @@ const MemoHeader: React.FC<MemoHeaderProps> = ({ timeDisplay = "relative", showC
       </div>
 
       <div data-slot="memo-header-actions" className="flex shrink-0 select-none flex-row items-center justify-end gap-1">
+        {currentUser && !isArchived && <MemoReadAloudButton memoName={memo.name} content={memo.content} />}
+
         {currentUser && !isArchived && (
           <ReactionSelector
             className={cn(

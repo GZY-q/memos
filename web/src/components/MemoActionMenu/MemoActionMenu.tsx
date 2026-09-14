@@ -14,13 +14,9 @@ import {
   MoreHorizontalIcon,
   MoreVerticalIcon,
   TrashIcon,
-  Volume2Icon,
-  VolumeXIcon,
 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { errorService } from "@/components/MemoEditor/services";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -31,10 +27,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useInstanceSetting } from "@/hooks/useInstanceQueries";
-import { useTTSPlayer } from "@/hooks/useTTSPlayer";
 import { State } from "@/types/proto/api/v1/common_pb";
-import { InstanceSetting_Key } from "@/types/proto/api/v1/instance_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { useMemoActionHandlers } from "./hooks";
 import MemoMoveDialog from "./MemoMoveDialog";
@@ -72,30 +65,6 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
     onEdit: props.onEdit,
     setDeleteDialogOpen,
   });
-
-  // Text-to-speech (Volcengine Ark Agent Plan when configured).
-  const { data: aiSetting } = useInstanceSetting(InstanceSetting_Key.AI);
-  const ttsConfigured = Boolean(aiSetting?.value.case === "aiSetting" && aiSetting.value.value.tts?.providerId);
-  const { isSpeakingThisMemo, isBusy, play: playTTS, stop: stopTTS } = useTTSPlayer(memo.name);
-
-  const handleReadAloud = async () => {
-    if (isSpeakingThisMemo || isBusy) {
-      stopTTS();
-      return;
-    }
-    try {
-      await playTTS(memo.content);
-    } catch (error) {
-      if ((error as Error).message === "empty") {
-        toast.error(t("memo.tts-empty"));
-        return;
-      }
-      toast.error(errorService.getErrorMessage(error) || t("memo.tts-error"));
-    }
-  };
-
-  const readAloudLabel = isSpeakingThisMemo ? t("memo.tts-stop") : t("memo.read-aloud");
-  const readAloudIcon = isSpeakingThisMemo ? <VolumeXIcon className="w-4 h-auto" /> : <Volume2Icon className="w-4 h-auto" />;
 
   return (
     <DropdownMenu>
@@ -137,14 +106,6 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
-        )}
-
-        {/* Text-to-speech (when configured) */}
-        {ttsConfigured && !isArchived && (
-          <DropdownMenuItem onClick={handleReadAloud}>
-            {readAloudIcon}
-            {readAloudLabel}
-          </DropdownMenuItem>
         )}
 
         {/* Task submenu (writable task memos) */}
