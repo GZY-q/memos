@@ -22,3 +22,16 @@ dist/
 # when --config.store-dir is set without an existing store; it contains a
 # symlink back to the workspace.
 .pnpm-store/
+
+# Local databases and runtime artifacts — never commit these.
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Browser automation scratch (screenshots, console dumps).
+.playwright-cli/
+
+# Local marketing/dev screenshots that are not build inputs.
+frontend.png

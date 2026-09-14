@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strconv"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -107,6 +109,9 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 	// policy, used by both the gRPC-Gateway middleware and the Connect interceptor.
 	authorizer := NewAuthorizer(s.Store, s.Secret)
 
+	// Shared rate limiter so Connect and gRPC-Gateway spend the same per-IP budget.
+	rateLimiter := NewRateLimitInterceptor(DefaultRateLimitConfig())
+
 	// grpc-gateway does not hand the matched procedure to middleware:
 	// runtime.RPCMethod is only populated by the generated handler, which runs
 	// after middleware. Resolve the procedure from the proto HTTP bindings
@@ -124,14 +129,20 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 			setAPIResponseNoStoreHeaders(w.Header())
 			ctx := r.Context()
 
+			// An unresolved path yields an empty procedure, which CheckAccess
+			// treats as protected: authenticated callers pass and anonymous ones
+			// are refused. Fail closed so a routing gap is not an access gap.
+			procedure, _ := routeResolver.resolveRequest(r)
+
+			// Rate-limit public auth endpoints before bcrypt/token work.
+			if ok, retryAfter := rateLimiter.AllowHTTP(procedure, r.Header, r.RemoteAddr); !ok {
+				writeGatewayRateLimitError(w, retryAfter)
+				return
+			}
+
 			authHeader := r.Header.Get("Authorization")
 			result := authorizer.Authenticate(ctx, authHeader)
 
-			// An unresolved path yields an empty procedure, which CheckAccess
-			// treats as protected: authenticated callers pass and anonymous ones
-			// are refused. Failing closed keeps a routing gap from becoming an
-			// access-control gap.
-			procedure, _ := routeResolver.resolveRequest(r)
 			if err := authorizer.CheckAccess(ctx, procedure, result); err != nil {
 				writeGatewayAuthorizationError(w, err)
 				return
@@ -179,6 +190,8 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 	gwGroup := echoServer.Group("")
 	// Register SSE endpoint with same CORS as rest of /api/v1.
 	RegisterSSERoutes(gwGroup, s.SSEHub, s.Store, s.Secret)
+	// Authenticated backup export for the current user (not a PublicMethod).
+	RegisterExportRoutes(gwGroup, s.Store, s.Secret)
 	handler := echo.WrapHandler(gwMux)
 
 	gwGroup.Any("/api/v1/*", handler)
@@ -190,6 +203,8 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 		NewMetadataInterceptor(), // Convert HTTP headers to gRPC metadata first
 		NewLoggingInterceptor(logStacktraces),
 		NewRecoveryInterceptor(logStacktraces),
+		// Rate-limit sensitive public procedures before the more expensive auth work.
+		rateLimiter,
 		NewAuthInterceptor(authorizer),
 	)
 	connectMux := http.NewServeMux()
@@ -222,4 +237,14 @@ func writeGatewayAuthorizationError(w http.ResponseWriter, err error) {
 	}
 	slog.Error("failed to resolve API access policy", "error", err)
 	http.Error(w, `{"code": 13, "message": "failed to resolve API access policy"}`, http.StatusInternalServerError)
+}
+
+// writeGatewayRateLimitError maps an over-budget request to HTTP 429 with Retry-After.
+func writeGatewayRateLimitError(w http.ResponseWriter, retryAfter time.Duration) {
+	seconds := int(retryAfter.Seconds())
+	if seconds < 1 {
+		seconds = 1
+	}
+	w.Header().Set("Retry-After", strconv.Itoa(seconds))
+	http.Error(w, `{"code": 8, "message": "rate limit exceeded"}`, http.StatusTooManyRequests)
 }

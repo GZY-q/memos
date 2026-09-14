@@ -133,11 +133,7 @@ const PreferencesSection = () => {
         </SettingList>
       </SettingGroup>
 
-      <SettingGroup
-        title={t("setting.shortcuts.title")}
-        description={t("setting.shortcuts.description")}
-        showSeparator
-      >
+      <SettingGroup title={t("setting.shortcuts.title")} description={t("setting.shortcuts.description")} showSeparator>
         <SettingList>
           <SettingListItem label={t("setting.shortcuts.open")} description={t("setting.shortcuts.hint")}>
             <KeyboardShortcutsDialog />

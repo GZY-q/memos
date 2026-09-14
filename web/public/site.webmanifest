@@ -10,5 +10,6 @@
   "scope": "/",
   "start_url": "/",
   "theme_color": "#faf9f5",
-  "background_color": "#faf9f5"
+  "background_color": "#faf9f5",
+  "categories": ["productivity", "utilities"]
 }

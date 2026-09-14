@@ -1,4 +1,4 @@
-import { Volume2Icon, VolumeXIcon } from "lucide-react";
+import { ListPlusIcon, Volume2Icon, VolumeXIcon } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { errorService } from "@/components/MemoEditor/services";
 import { buttonVariants } from "@/components/ui/button";
@@ -17,23 +17,33 @@ interface MemoReadAloudButtonProps {
 
 /**
  * Quick-access read-aloud control placed next to the reaction button on memo cards.
+ *
+ * Clicking while another memo is playing enqueues this one instead of interrupting,
+ * so a short listening queue can be built from the timeline.
  */
 const MemoReadAloudButton = ({ memoName, content, className }: MemoReadAloudButtonProps) => {
   const t = useTranslate();
   const { data: aiSetting } = useInstanceSetting(InstanceSetting_Key.AI);
   const ttsConfigured = Boolean(aiSetting?.value.case === "aiSetting" && aiSetting.value.value.tts?.providerId);
-  const { isSpeakingThisMemo, isBusy, play, stop } = useTTSPlayer(memoName);
+  const { isSpeakingThisMemo, isBusy, play, stop, enqueuePlay } = useTTSPlayer(memoName);
 
   if (!ttsConfigured) {
     return null;
   }
 
+  const isQueuedAction = isBusy && !isSpeakingThisMemo;
+
   const handleClick = async () => {
-    if (isSpeakingThisMemo || isBusy) {
+    if (isSpeakingThisMemo) {
       stop();
       return;
     }
     try {
+      if (isQueuedAction) {
+        await enqueuePlay(content);
+        toast.success(t("memo.tts-queued"));
+        return;
+      }
       await play(content);
     } catch (error) {
       if ((error as Error).message === "empty") {
@@ -44,7 +54,7 @@ const MemoReadAloudButton = ({ memoName, content, className }: MemoReadAloudButt
     }
   };
 
-  const label = isSpeakingThisMemo ? t("memo.tts-stop") : t("memo.read-aloud");
+  const label = isSpeakingThisMemo ? t("memo.tts-stop") : isQueuedAction ? t("memo.tts-enqueue") : t("memo.read-aloud");
 
   return (
     <Tooltip>
@@ -60,7 +70,13 @@ const MemoReadAloudButton = ({ memoName, content, className }: MemoReadAloudButt
         )}
         onClick={handleClick}
       >
-        {isSpeakingThisMemo ? <VolumeXIcon className="size-4" strokeWidth={1.8} /> : <Volume2Icon className="size-4" strokeWidth={1.8} />}
+        {isSpeakingThisMemo ? (
+          <VolumeXIcon className="size-4" strokeWidth={1.8} />
+        ) : isQueuedAction ? (
+          <ListPlusIcon className="size-4" strokeWidth={1.8} />
+        ) : (
+          <Volume2Icon className="size-4" strokeWidth={1.8} />
+        )}
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>

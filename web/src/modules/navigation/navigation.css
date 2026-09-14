@@ -101,9 +101,16 @@
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 4%);
 }
 
-/* Search-engine chips (Google / Bing / 百度) inside the spotlight pill. */
+/* Search-engine chips (built-in + custom) inside the spotlight pill. */
 .nav-engine-tabs {
   gap: 2px;
+  max-width: calc(100% - 2.75rem);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav-engine-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-engine-chip {

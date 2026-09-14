@@ -28,7 +28,11 @@ interface ShortcutRow {
 }
 
 interface ShortcutGroup {
-  titleKey: "setting.shortcuts.group-nav" | "setting.shortcuts.group-search" | "setting.shortcuts.group-editor" | "setting.shortcuts.group-misc";
+  titleKey:
+    | "setting.shortcuts.group-nav"
+    | "setting.shortcuts.group-search"
+    | "setting.shortcuts.group-editor"
+    | "setting.shortcuts.group-misc";
   rows: ShortcutRow[];
 }
 

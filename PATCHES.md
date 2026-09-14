@@ -239,3 +239,71 @@ memo empty state, offline retry state, filtering, empty results + clear, `/`
 focus, arrow-key roving + wrap, Escape clear, blur-clear, and the group
 disclosure label. `web/tests/navigation-config.test.ts` gained the rethrow and
 broken-memo-without-cache cases.
+
+---
+
+## Patch 5: TTS read-aloud (self-contained AI speech)
+
+Outside `modules/navigation/`. Core backend lives under `internal/ai/tts/`
+(Edge + Volcengine Ark) and is wired through `server/router/api/v1/ai_service.go`.
+Frontend surface:
+
+1. `web/src/components/MemoEditor/services/ttsService.ts` — Connect client for synthesize.
+2. `web/src/hooks/useTTSPlayer.ts` — tab-global playback session (one memo at a time).
+3. `web/src/components/MemoView/MemoReadAloudButton.tsx` (or adjacent action menu) — play/stop control next to reactions.
+4. `web/src/components/Settings/AISection.tsx` — instance-level TTS provider settings.
+
+- **Reason**: memo read-aloud without shipping audio to a third-party UI.
+- **Upstream risk**: medium. Touches memo action menus and Settings; AI proto
+  service may conflict if upstream adds its own speech endpoints. Prefer keeping
+  provider config in instance settings rather than forking the entire AI surface.
+- **State note**: `useTTSPlayer` intentionally uses module-level listeners so only
+  one memo speaks per tab. If upstream adopts a player context, migrate carefully.
+
+## Patch 6: signed-in sidebar dual-column icon rail
+
+Already described in Patch 4. Upstream rebase risk is **medium** because
+`GlobalNavigation` layout direction and width constants changed. Keep tests
+(`app-sidebar-logo.test.tsx`, `user-menu.test.tsx`, `sidebar-width.test.tsx`)
+aligned with the icon-rail contract after every rebase.
+
+## Patch 7: custom search engines + TTS queue store
+
+Outside `modules/navigation/` for TTS only:
+
+1. `web/src/modules/navigation/searchEngines.ts` — built-in + user-defined engines
+   (`{q}` template, localStorage, validation, max 8 customs).
+2. `NavigationPage.tsx` + `i18n.ts` — engine chips + add/manage dialog.
+3. `web/src/hooks/ttsPlayerStore.ts` + `useTTSPlayer.ts` — tab-global playback
+   session with `enqueue`/`skip`/`queue` (UI button still uses `play`/`stop`).
+
+- **Reason**: personal search shortcuts and multi-memo read-aloud without new deps.
+- **Upstream risk**: low-medium. Search engines stay inside the navigation module.
+  TTS store is additive next to the existing hook.
+
+## Patch 8: auth rate limit + user export + offline shell
+
+1. `server/router/api/v1/rate_limit.go` + Connect/gateway wiring — 10 req/min/IP
+   on SignIn / RefreshToken / CreateUser (shared limiter across transports).
+2. `server/router/api/v1/export_handler.go` — `GET /api/v1/export/me` (JSON or
+   Markdown) for the credential's own memos; not public.
+3. `web/public/sw.js` + `main.tsx` registration — network-first SPA shell cache;
+   API/SSE never cached.
+4. `PagedMemoList.tsx` — `content-visibility: auto` on flow-layout cards.
+
+- **Reason**: brute-force baseline, backup export, flaky-network shell.
+- **Upstream risk**: medium for rate-limit interceptor order (keep before Auth).
+  Export is additive. SW is production-only and opt-out by unregister if needed.
+
+## Repo hygiene notes (local only)
+
+Local runtime artifacts must stay out of git:
+
+- `memos_prod.db`, `memos_prod.db-shm`, `memos_prod.db-wal`, `*.sqlite*`
+- `.playwright-cli/` automation scratch
+- `server/router/frontend/dist/` build output (produced by `pnpm release`)
+
+`.gitignore` now covers these. Files that were previously tracked are removed
+from the index in the improve branch; history rewrite is intentionally **not**
+performed here — if secrets ever landed in a db commit, rotate them and consider
+a separate `git filter-repo` pass with explicit approval.

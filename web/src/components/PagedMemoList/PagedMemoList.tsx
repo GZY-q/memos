@@ -301,7 +301,16 @@ const PagedMemoList = (props: Props) => {
               <MemoFilters className="mb-2" />
               {initialLoader}
               {initialError}
-              {displayMemoList.map((memo) => props.renderer(memo, { compact: effectiveCompact }))}
+              {displayMemoList.map((memo) => (
+                // Offscreen cards skip layout/paint; intrinsic size keeps scroll height stable.
+                <div
+                  key={getMemoKey(memo)}
+                  className="w-full"
+                  style={{ contentVisibility: "auto", containIntrinsicBlockSize: "auto 240px" }}
+                >
+                  {props.renderer(memo, { compact: effectiveCompact })}
+                </div>
+              ))}
               {emptyPlaceholder}
               {!isDisplayPending && footer}
             </>

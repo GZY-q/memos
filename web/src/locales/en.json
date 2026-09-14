@@ -494,7 +494,10 @@
       "public-description": "Visible to everyone",
       "space": "Space",
       "space-description": "Visible to members of this space"
-    }
+    },
+    "tts-enqueue": "Add to read-aloud queue",
+    "tts-queued": "Added to read-aloud queue",
+    "tts-skip": "Skip to next"
   },
   "message": {
     "archived-successfully": "Archived successfully",

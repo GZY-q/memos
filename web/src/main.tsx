@@ -84,3 +84,13 @@ function Main() {
 const container = document.getElementById("root");
 const root = createRoot(container as HTMLElement);
 root.render(<Main />);
+
+// Offline shell: progressive enhancement; failures are silent (private instances
+// or browsers without SW must keep working).
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Ignore registration failures (e.g. missing sw.js in older embeds).
+    });
+  });
+}

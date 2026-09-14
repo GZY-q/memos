@@ -12,6 +12,16 @@ Memos is a self-hosted note-taking app.
 - Storage: SQLite, MySQL, PostgreSQL.
 - Generated API outputs: `proto/gen/` for Go/OpenAPI, `web/src/types/proto/` for TypeScript.
 
+### This fork adds
+
+| Area | Where | Notes |
+| --- | --- | --- |
+| Navigation / bookmarks start page | `web/src/modules/navigation/` | Self-contained; config stored as ARCHIVED+PRIVATE memo. Audit outside edits in `PATCHES.md`. |
+| TTS read-aloud | `internal/ai/tts/`, `ai_service.go`, `useTTSPlayer.ts` | Edge + Ark providers. |
+| Repo hygiene | `.gitignore` | Never commit `*.db`, `.playwright-cli/`, or `server/router/frontend/dist/`. |
+
+When rebasing upstream, re-read `PATCHES.md` first.
+
 ## Working Rules
 
 - Read relevant code before editing; prefer local patterns over new abstractions.

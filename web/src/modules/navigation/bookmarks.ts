@@ -106,9 +106,11 @@ export const parseBookmarkHtml = (html: string, rootFolderName = "书签导入")
       let nested = Array.from(dt.children).find((child) => child.tagName === "DL");
       // Some exporters close </DT> and put the folder body as the next sibling.
       if (!nested && heading) {
-        let next = dt.nextElementSibling;
+        let next: Element | null = dt.nextElementSibling;
         while (next && next.tagName !== "DL") next = next.nextElementSibling;
-        nested = next;
+        if (next) {
+          nested = next;
+        }
       }
 
       if (heading && nested) {

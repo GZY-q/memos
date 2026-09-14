@@ -77,6 +77,18 @@ export interface NavStrings {
   deleteCardConfirm: string;
   deleteGroupConfirm: string;
   editActions: string;
+  engineTabsLabel: string;
+  addSearchEngine: string;
+  addSearchEngineHint: string;
+  fieldEngineLabel: string;
+  fieldEngineTemplate: string;
+  engineLabelRequired: string;
+  engineTemplateInvalid: string;
+  engineTemplateMissingQuery: string;
+  engineTooMany: (max: number) => string;
+  removeSearchEngine: string;
+  customEngines: string;
+  customEnginesEmpty: string;
 }
 
 const STRINGS: Record<"zh" | "en", NavStrings> = {
@@ -150,6 +162,18 @@ const STRINGS: Record<"zh" | "en", NavStrings> = {
     deleteCardConfirm: "确定删除这张卡片？",
     deleteGroupConfirm: "确定删除该分组及其全部卡片？",
     editActions: "卡片操作",
+    engineTabsLabel: "搜索引擎",
+    addSearchEngine: "添加自定义引擎",
+    addSearchEngineHint: "URL 模板需以 http(s):// 开头，并用 {q} 占位搜索词。",
+    fieldEngineLabel: "名称",
+    fieldEngineTemplate: "URL 模板",
+    engineLabelRequired: "请填写名称。",
+    engineTemplateInvalid: "请输入有效的 http(s) 链接。",
+    engineTemplateMissingQuery: "URL 模板需要包含 {q} 占位符。",
+    engineTooMany: (max: number) => `最多只能添加 ${max} 个自定义引擎。`,
+    removeSearchEngine: "移除引擎",
+    customEngines: "自定义引擎",
+    customEnginesEmpty: "还没有自定义引擎。",
   },
   en: {
     sidebarLabel: "Navigation",
@@ -224,6 +248,18 @@ const STRINGS: Record<"zh" | "en", NavStrings> = {
     deleteCardConfirm: "Delete this card?",
     deleteGroupConfirm: "Delete this group and all of its cards?",
     editActions: "Card actions",
+    engineTabsLabel: "Search engines",
+    addSearchEngine: "Add custom engine",
+    addSearchEngineHint: "URL template must start with http(s):// and include a {q} placeholder.",
+    fieldEngineLabel: "Name",
+    fieldEngineTemplate: "URL template",
+    engineLabelRequired: "Name is required.",
+    engineTemplateInvalid: "Enter a valid http(s) URL.",
+    engineTemplateMissingQuery: "URL template must include the {q} placeholder.",
+    engineTooMany: (max: number) => `You can add at most ${max} custom engines.`,
+    removeSearchEngine: "Remove engine",
+    customEngines: "Custom engines",
+    customEnginesEmpty: "No custom engines yet.",
   },
 };
 

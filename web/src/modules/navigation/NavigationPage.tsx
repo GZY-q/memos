@@ -73,11 +73,19 @@ import { moveCard, moveGroup } from "./reorder";
 import { cycleIndex, flattenCards, searchNavConfig } from "./search";
 import {
   buildSearchUrl,
+  createCustomEngine,
   cycleSearchEngine,
+  DEFAULT_SEARCH_ENGINE,
+  type EngineDraftError,
   getSearchEngine,
+  listSearchEngines,
+  MAX_CUSTOM_ENGINES,
+  readCustomEngines,
   readPreferredEngine,
-  SEARCH_ENGINES,
+  type SearchEngine,
   type SearchEngineId,
+  validateEngineDraft,
+  writeCustomEngines,
   writePreferredEngine,
 } from "./searchEngines";
 import { useNavConfig } from "./useNavConfig";
@@ -399,6 +407,122 @@ const SearchEmptyState = ({ onClear }: { onClear: () => void }) => {
 const draftErrorMessage = (error: CardDraftError, t: ReturnType<typeof useNavStrings>): string =>
   error === "titleRequired" ? t.titleRequired : error === "urlInvalid" ? t.urlInvalid : t.urlDuplicate;
 
+const engineErrorMessage = (error: EngineDraftError, t: ReturnType<typeof useNavStrings>): string =>
+  error === "labelRequired"
+    ? t.engineLabelRequired
+    : error === "urlInvalid"
+      ? t.engineTemplateInvalid
+      : error === "missingQueryPlaceholder"
+        ? t.engineTemplateMissingQuery
+        : t.engineTooMany(MAX_CUSTOM_ENGINES);
+
+/** Add / remove user-defined engines next to the built-in chips. */
+const EngineDialog = ({
+  customEngines,
+  onClose,
+  onAdd,
+  onRemove,
+}: {
+  customEngines: SearchEngine[];
+  onClose: () => void;
+  onAdd: (draft: { label: string; urlTemplate: string }) => string | null;
+  onRemove: (id: SearchEngineId) => void;
+}) => {
+  const t = useNavStrings();
+  const [label, setLabel] = useState("");
+  const [urlTemplate, setUrlTemplate] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const problem = onAdd({ label, urlTemplate });
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setLabel("");
+    setUrlTemplate("");
+    setError(null);
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => (open ? undefined : onClose())}>
+      <DialogContent size="sm" data-testid="nav-engine-dialog">
+        <DialogHeader>
+          <DialogTitle>{t.addSearchEngine}</DialogTitle>
+          <DialogDescription>{t.addSearchEngineHint}</DialogDescription>
+        </DialogHeader>
+        <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="nav-engine-label">{t.fieldEngineLabel}</Label>
+            <Input
+              id="nav-engine-label"
+              data-testid="nav-engine-label"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="nav-engine-template">{t.fieldEngineTemplate}</Label>
+            <Input
+              id="nav-engine-template"
+              data-testid="nav-engine-template"
+              value={urlTemplate}
+              onChange={(e) => setUrlTemplate(e.target.value)}
+              placeholder="https://example.com/search?q={q}"
+            />
+          </div>
+          {error ? (
+            <p className="text-sm text-destructive" role="alert" data-testid="nav-engine-error">
+              {error}
+            </p>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>
+              {t.cancel}
+            </Button>
+            <Button type="submit" size="sm" data-testid="nav-engine-submit" disabled={customEngines.length >= MAX_CUSTOM_ENGINES}>
+              {t.save}
+            </Button>
+          </DialogFooter>
+        </form>
+        <div className="flex flex-col gap-2 border-t pt-3">
+          <p className="text-xs font-medium text-muted-foreground">{t.customEngines}</p>
+          {customEngines.length === 0 ? (
+            <p className="text-sm text-muted-foreground" data-testid="nav-engine-custom-empty">
+              {t.customEnginesEmpty}
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {customEngines.map((engine) => (
+                <li
+                  key={engine.id}
+                  className="flex items-center gap-2 rounded-md px-1 py-0.5"
+                  data-testid={`nav-engine-custom-${engine.id}`}
+                >
+                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">{engine.label}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 shrink-0"
+                    aria-label={`${t.removeSearchEngine}: ${engine.label}`}
+                    data-testid={`nav-engine-remove-${engine.id}`}
+                    onClick={() => onRemove(engine.id)}
+                  >
+                    <TrashIcon className="size-3.5" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const CardDialog = ({
   state,
   config,
@@ -566,7 +690,12 @@ const NavigationPage = () => {
   const { state, isLoading, isError, refetch, save, isSaving } = useNavConfig();
 
   const [query, setQuery] = useState("");
-  const [engineId, setEngineIdState] = useState<SearchEngineId>(() => readPreferredEngine());
+  const [customEngines, setCustomEnginesState] = useState<SearchEngine[]>(() => readCustomEngines());
+  const [engineId, setEngineIdState] = useState<SearchEngineId>(() => {
+    const saved = readPreferredEngine();
+    return listSearchEngines(readCustomEngines()).some((engine) => engine.id === saved) ? saved : DEFAULT_SEARCH_ENGINE;
+  });
+  const [engineDialogOpen, setEngineDialogOpen] = useState(false);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
@@ -582,17 +711,45 @@ const NavigationPage = () => {
   const cardDragRef = useRef<CardDrag | null>(null);
   const groupDragRef = useRef<string | null>(null);
 
+  const engines = useMemo(() => listSearchEngines(customEngines), [customEngines]);
+
   const setEngineId = useCallback((id: SearchEngineId) => {
     setEngineIdState(id);
     writePreferredEngine(id);
   }, []);
 
+  const setCustomEngines = useCallback((next: SearchEngine[]) => {
+    setCustomEnginesState(next);
+    writeCustomEngines(next);
+  }, []);
+
+  const handleAddEngine = useCallback(
+    (draft: { label: string; urlTemplate: string }): string | null => {
+      const problem = validateEngineDraft(draft, customEngines.length);
+      if (problem) return engineErrorMessage(problem, t);
+      const engine = createCustomEngine(draft, engines);
+      setCustomEngines([...customEngines, engine]);
+      setEngineId(engine.id);
+      return null;
+    },
+    [customEngines, engines, setCustomEngines, setEngineId, t],
+  );
+
+  const handleRemoveEngine = useCallback(
+    (id: SearchEngineId) => {
+      const next = customEngines.filter((engine) => engine.id !== id);
+      setCustomEngines(next);
+      if (engineId === id) setEngineId(DEFAULT_SEARCH_ENGINE);
+    },
+    [customEngines, engineId, setCustomEngines, setEngineId],
+  );
+
   const openWebSearch = useCallback(() => {
     const trimmed = query.trim();
     if (!trimmed) return;
-    const url = buildSearchUrl(getSearchEngine(engineId), trimmed);
+    const url = buildSearchUrl(getSearchEngine(engineId, customEngines), trimmed);
     if (url) window.open(url, "_blank", "noopener,noreferrer");
-  }, [query, engineId]);
+  }, [query, engineId, customEngines]);
 
   const config = state?.config ?? null;
   const filtered = useMemo(() => (config ? searchNavConfig(config, query) : null), [config, query]);
@@ -691,9 +848,9 @@ const NavigationPage = () => {
 
   const handleSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Tab") {
-      // Tab cycles Google → Bing → 百度 while the spotlight is focused.
+      // Tab cycles through built-in + custom engines while the spotlight is focused.
       event.preventDefault();
-      setEngineId(cycleSearchEngine(engineId, event.shiftKey ? -1 : 1).id);
+      setEngineId(cycleSearchEngine(engineId, event.shiftKey ? -1 : 1, customEngines).id);
       return;
     }
     if (event.key === "Enter") {
@@ -1183,9 +1340,9 @@ const NavigationPage = () => {
                   className="nav-engine-tabs absolute left-2 top-1/2 z-10 flex -translate-y-1/2 items-center gap-0.5"
                   data-testid="nav-engine-tabs"
                   role="group"
-                  aria-label="搜索引擎"
+                  aria-label={t.engineTabsLabel}
                 >
-                  {SEARCH_ENGINES.map((engine) => (
+                  {engines.map((engine) => (
                     <Tooltip key={engine.id}>
                       <TooltipTrigger
                         render={
@@ -1206,6 +1363,23 @@ const NavigationPage = () => {
                       <TooltipContent side="bottom">{engine.label}</TooltipContent>
                     </Tooltip>
                   ))}
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          type="button"
+                          data-testid="nav-add-engine"
+                          aria-label={t.addSearchEngine}
+                          className="nav-engine-chip"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => setEngineDialogOpen(true)}
+                        />
+                      }
+                    >
+                      <PlusIcon className="size-3" strokeWidth={2.2} />
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">{t.addSearchEngine}</TooltipContent>
+                  </Tooltip>
                 </div>
                 <Input
                   ref={searchRef}
@@ -1215,7 +1389,7 @@ const NavigationPage = () => {
                   onKeyDown={handleSearchKeyDown}
                   placeholder={t.searchPlaceholder}
                   aria-label={t.searchPlaceholder}
-                  className="nav-spotlight-input h-12 rounded-full pr-10 pl-28 text-base"
+                  className="nav-spotlight-input h-12 rounded-full pr-10 pl-36 text-base"
                   data-testid="nav-search-input"
                 />
                 {query ? (
@@ -1529,6 +1703,14 @@ const NavigationPage = () => {
         <CardDialog state={cardDialog} config={config} onClose={() => setCardDialog(null)} onSubmit={handleCardSubmit} />
       ) : null}
       {nameDialog ? <NameDialog state={nameDialog} onClose={() => setNameDialog(null)} onSubmit={handleNameSubmit} /> : null}
+      {engineDialogOpen ? (
+        <EngineDialog
+          customEngines={customEngines}
+          onClose={() => setEngineDialogOpen(false)}
+          onAdd={handleAddEngine}
+          onRemove={handleRemoveEngine}
+        />
+      ) : null}
       {confirmDialog ? (
         <ConfirmDialog state={confirmDialog} onClose={() => setConfirmDialog(null)} onConfirm={handleConfirmDelete} />
       ) : null}
