@@ -1,72 +1,86 @@
-# Memos 云端 Docker Compose 部署
+# 本仓库（自建 Fork）云端部署
 
-**部署本仓库（自建 fork）请用：[AI_DEPLOY.md](./AI_DEPLOY.md)** — 从源码构建，**不要**用官方镜像 `neosmemo/memos`（没有导航/TTS/审计等 fork 功能）。
+**部署本 fork 请只用源码构建。** 官方镜像 `neosmemo/memos` **不含**导航 / 日记 / TTS / 审计 / FTS / 导出 / 导入等本仓库功能。
 
-本机未安装 Docker，镜像需在云服务器上构建/拉取。二进制产物在 `../build/`，适合不用 Docker 的场景。
+完整可交给 AI 执行的步骤见 **[AI_DEPLOY.md](./AI_DEPLOY.md)**。
 
-## 选哪种方式
+## 必须用源码构建的原因
 
-| 方式 | 适用 |
-| --- | --- |
-| `docker-compose.build.yml` | **本 fork / 定制代码（推荐）**，从源码构建 |
-| `docker-compose.yml` | 仅上游功能、无本仓库改动时用官方 `neosmemo/memos:stable` |
-| `../build/memos-linux-*` | 服务器没有 Docker，直接丢静态二进制 |
+| 方式 | 镜像 | 本 fork 功能 |
+| --- | --- | --- |
+| **`docker-compose.build.yml`（本仓库）** | 本地 `memos:<commit>` | 完整 |
+| `docker-compose.yml` / `neosmemo/memos:stable` | 官方镜像 | **无 fork 功能** |
+| `../build/memos-linux-*` | 本地二进制 | 视构建内容 |
 
-## 方式一：官方镜像（最快）
+> `scripts/Dockerfile` **不会**在镜像内编译前端（`.dockerignore` 排除 `web/`）。构建镜像前必须先在仓库根执行 `cd web && pnpm install && pnpm release`。
+
+## 快速部署（本 fork）
+
+在服务器上：
 
 ```bash
-# 把 deploy/ 目录上传到服务器后
+# 1) 源码（clone 本仓库，或 rsync 整个仓库）
+git clone <本仓库 URL> /opt/memos/src
+cd /opt/memos/src
+
+# 2) 前端打进 Go embed 目录（必须）
+cd web && pnpm install && pnpm release && cd ..
+
+# 3) 构建并启动
 cd deploy
 cp .env.example .env
-# 编辑 .env，至少设置 MEMOS_INSTANCE_URL（如有域名）
-
-docker compose up -d
-```
-
-浏览器打开 `http://<服务器IP>:5230`，首次访问会进入初始化向导。
-
-## 方式二：从本仓库源码构建
-
-在服务器上准备好仓库（`git clone` 或 `rsync` 整个仓库，保留 `scripts/Dockerfile`）：
-
-```bash
-cd memos/deploy
-cp .env.example .env
-# 填写 MEMOS_VERSION / MEMOS_COMMIT（可选）
-
+# 可选：MEMOS_VERSION / MEMOS_COMMIT / MEMOS_HOST_PORT / MEMOS_INSTANCE_URL
+mkdir -p data
 docker compose -f docker-compose.build.yml up -d --build
 ```
 
-构建阶段需要拉 `golang:1.27.0-alpine` 与 `alpine:3.21`；国内服务器建议先配好镜像加速。
+浏览器打开 `http://<服务器IP>:5230`，注册第一个用户（Host）。
+
+验证是本 fork 构建：
+
+```bash
+curl -fsS http://127.0.0.1:5230/healthz   # Service ready.
+docker images | grep memos                # 本地 memos:<hash>，不是 neosmemo/memos
+```
+
+侧栏应有导航 / 日记；设置里应有审计日志、导入。
 
 ## 数据与升级
 
-- 数据卷：`./data`（SQLite 默认 `memos_prod.db`，上传附件也在里面）
-- 升级官方镜像：
+- 数据卷：`./data`（SQLite `memos_prod.db` + 附件）
+- 升级：
 
 ```bash
-docker compose pull
-docker compose up -d
+cd /opt/memos/src
+git pull   # 或 rsync 新代码
+cd web && pnpm install && pnpm release && cd ..
+cd deploy
+tar czf "/backup/memos-$(date +%F).tgz" data   # 建议
+docker compose -f docker-compose.build.yml up -d --build
 ```
-
-- 升级源码构建：拉新代码后重新 `--build`。升级前建议备份 `./data`。
 
 ## 常用环境变量
 
 | 变量 | 说明 |
 | --- | --- |
 | `MEMOS_HOST_PORT` | 宿主机端口，默认 `5230` |
-| `MEMOS_INSTANCE_URL` | 对外完整 URL，如 `https://memos.example.com`；不设则私有模式 |
+| `MEMOS_INSTANCE_URL` | 对外完整 URL，如 `https://memos.example.com` |
 | `TZ` | 时区，默认 `Asia/Shanghai` |
-| `MEMOS_DSN` | 可选，MySQL/PostgreSQL 连接串（默认 SQLite） |
+| `MEMOS_VERSION` / `MEMOS_COMMIT` | 构建标签（`docker-compose.build.yml`） |
+| `MEMOS_DSN` | 可选，MySQL/PostgreSQL DSN（默认 SQLite） |
 
 完整配置见 `docs/configuration-provisioning.md`。
 
 ## 生产建议（HTTPS 反代）
 
-云上建议用 Caddy / Nginx / 云负载终结 TLS，再反代到 `127.0.0.1:5230`。
+Caddy / Nginx 终结 TLS，反代到 `127.0.0.1:5230`；compose 端口改为：
 
-Caddy 示例：
+```yaml
+ports:
+  - "127.0.0.1:5230:5230"
+```
+
+Caddy：
 
 ```
 memos.example.com {
@@ -74,23 +88,25 @@ memos.example.com {
 }
 ```
 
-若走反代，端口可以只绑本机：
-
-```yaml
-ports:
-  - "127.0.0.1:5230:5230"
-```
-
 ## 防火墙 / 安全组
 
-- 放行 80/443（HTTPS）
-- 若不用反代、直接暴露应用，放行 `5230`，并尽量限制来源 IP
-- 不要把 `./data` 目录公开到静态站点目录
+- HTTPS：放行 80/443，应用只绑本机
+- 调试直连：放行 `5230`，并限制来源 IP
+- 不要把 `./data` 放到静态站点目录
 
 ## 验证
 
 ```bash
-docker compose ps
-docker compose logs -f memos --tail 50
-curl -I http://127.0.0.1:5230
+docker compose -f docker-compose.build.yml ps
+docker compose -f docker-compose.build.yml logs -f memos --tail 50
+curl -fsS http://127.0.0.1:5230/healthz
 ```
+
+## 相关文件
+
+| 文件 | 用途 |
+| --- | --- |
+| [AI_DEPLOY.md](./AI_DEPLOY.md) | 给 AI 的无人值守部署步骤 |
+| `docker-compose.build.yml` | **本 fork 推荐** |
+| `docker-compose.yml` | 上游官方镜像 compose（本 fork 不用） |
+| `../scripts/Dockerfile` | 源码构建镜像 |

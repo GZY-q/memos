@@ -1,6 +1,9 @@
-# 从当前源码构建镜像（适合 fork / 定制代码）
-# 用法: docker compose -f docker-compose.build.yml up -d --build
-# 注意: 需要把整个仓库上传到服务器，或在服务器上 git clone 后执行
+# 本 fork 推荐：从当前源码构建镜像（含导航/TTS/审计等）
+# 用法:
+#   cd web && pnpm install && pnpm release && cd ..   # 必须先编前端
+#   cd deploy
+#   docker compose -f docker-compose.build.yml up -d --build
+# 注意: 整个仓库需在服务器上（git clone 或 rsync）；不要用官方镜像 neosmemo/memos。
 
 services:
   memos:

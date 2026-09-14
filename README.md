@@ -48,19 +48,19 @@ Rebase notes: [`PATCHES.md`](./PATCHES.md). Contributor conventions: [`AGENTS.md
 
 ## Quick Start
 
-### Docker (upstream image)
+### Deploy this fork (source build)
 
-Stock Memos without fork features:
+Official Docker Hub image `neosmemo/memos` does **not** include this fork’s features. Build from source:
 
 ```bash
-docker run -d \
-  --name memos \
-  -p 5230:5230 \
-  -v ~/.memos:/var/opt/memos \
-  neosmemo/memos:stable
+git clone <this-repo-url> memos && cd memos
+cd web && pnpm install && pnpm release && cd ..   # required before docker build
+cd deploy && cp .env.example .env
+docker compose -f docker-compose.build.yml up -d --build
+# open http://<server>:5230
 ```
 
-Other install options: [upstream deployment guide](https://usememos.com/docs/deploy).
+Full steps (HTTPS, backup, AI-agent script): [`deploy/AI_DEPLOY.md`](./deploy/AI_DEPLOY.md) · [`deploy/DEPLOY.md`](./deploy/DEPLOY.md).
 
 ### Development (this fork)
 
@@ -72,6 +72,20 @@ go run ./cmd/memos --port 8081
 cd web && pnpm install && pnpm dev
 # open http://localhost:3001
 ```
+
+### Upstream-only image (no fork features)
+
+Stock Memos without navigation/TTS/audit/etc. — use upstream docs only if you do not need this fork:
+
+```bash
+docker run -d \
+  --name memos \
+  -p 5230:5230 \
+  -v ~/.memos:/var/opt/memos \
+  neosmemo/memos:stable
+```
+
+Upstream install guide: https://usememos.com/docs/deploy.
 
 Useful APIs after sign-in:
 

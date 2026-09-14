@@ -1,3 +1,5 @@
+# ⚠️ 上游官方镜像示例，不含本 fork 功能。
+# 本仓库部署请用 deploy/docker-compose.build.yml（先 pnpm release 再 build）。
 services:
   memos:
     image: neosmemo/memos:stable

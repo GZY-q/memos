@@ -1,6 +1,9 @@
-# 官方镜像一键部署（推荐）
-# 用法: docker compose up -d
-# 数据默认持久化在 ./data，端口 5230
+# ⚠️ 上游官方镜像 compose —— 不适合本 fork！
+# 官方镜像没有导航/日记/TTS/审计/FTS/导入等本仓库功能。
+# 部署本仓库请用：docker-compose.build.yml（见 AI_DEPLOY.md / DEPLOY.md）
+#
+# 仅在你明确只要上游功能时才用本文件：
+#   docker compose up -d
 
 services:
   memos:
