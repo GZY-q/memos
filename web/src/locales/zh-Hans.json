@@ -1149,6 +1149,26 @@
       "last-updated": "{{ago}} 前更新",
       "refresh": "刷新",
       "load-error": "加载统计数据失败"
+    },
+    "audit-logs": {
+      "label": "审计日志",
+      "title": "审计日志",
+      "description": "最近的登录、账号与导出事件。不会存储密码或令牌。",
+      "refresh": "刷新",
+      "filters": "筛选",
+      "action-placeholder": "操作，如 auth.sign_in",
+      "outcome": "结果",
+      "outcome-all": "全部结果",
+      "username-placeholder": "用户名（精确匹配）",
+      "apply": "应用",
+      "results": "结果（{{count}}）",
+      "empty": "没有匹配的审计事件。",
+      "load-error": "加载审计日志失败。",
+      "column-time": "时间",
+      "column-actor": "操作者",
+      "column-action": "操作",
+      "column-ip": "IP",
+      "column-outcome": "结果"
     }
   },
   "space": {

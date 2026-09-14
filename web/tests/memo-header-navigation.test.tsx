@@ -29,6 +29,11 @@ vi.mock("@/components/MemoReactionListView", () => ({
   ),
 }));
 
+// Read-aloud pulls instance AI settings via React Query; this suite covers header layout only.
+vi.mock("@/components/MemoView/components/MemoReadAloudButton", () => ({
+  default: () => null,
+}));
+
 vi.mock("@/components/UserAvatar", () => ({
   default: () => <span>avatar</span>,
 }));

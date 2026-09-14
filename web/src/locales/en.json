@@ -1145,6 +1145,26 @@
       "last-updated": "Last updated {{ago}}",
       "refresh": "Refresh",
       "load-error": "Failed to load statistics"
+    },
+    "audit-logs": {
+      "label": "Audit logs",
+      "title": "Audit logs",
+      "description": "Recent sign-in, account, and export events. Passwords and tokens are never stored.",
+      "refresh": "Refresh",
+      "filters": "Filters",
+      "action-placeholder": "Action, e.g. auth.sign_in",
+      "outcome": "Outcome",
+      "outcome-all": "All outcomes",
+      "username-placeholder": "Username (exact)",
+      "apply": "Apply",
+      "results": "Results ({{count}})",
+      "empty": "No audit events match these filters.",
+      "load-error": "Failed to load audit logs.",
+      "column-time": "Time",
+      "column-actor": "Actor",
+      "column-action": "Action",
+      "column-ip": "IP",
+      "column-outcome": "Outcome"
     }
   },
   "space": {

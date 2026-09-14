@@ -494,7 +494,10 @@
     "read-aloud": "Read Aloud",
     "tts-empty": "This memo has no readable text.",
     "tts-error": "Failed to read memo aloud.",
-    "tts-stop": "Stop Reading"
+    "tts-stop": "Stop Reading",
+    "tts-enqueue": "Add to read-aloud queue",
+    "tts-queued": "Added to read-aloud queue",
+    "tts-skip": "Skip to next"
   },
   "message": {
     "archived-successfully": "Uğurla arxivləndi",
@@ -687,7 +690,9 @@
       "tts-provider": "Provider",
       "tts-speaker-help": "Volcengine Ark voice id, e.g. zh_female_vv_uranus_bigtts.",
       "tts-speaker": "Speaker",
-      "tts-title": "Text to speech"
+      "tts-title": "Text to speech",
+      "edge-keyless-note": "Microsoft Edge read-aloud is keyless. No API key or endpoint is required; Memos proxies synthesis from this server.",
+      "tts-speaker-edge-help": "Microsoft Edge neural voice used when reading memos aloud."
     },
     "instance": {
       "access-description": "Bu instans üçün anonim baxışı, qeydiyyatı, doğrulamanı və profil redaktəsini idarə edin.",
@@ -1140,6 +1145,26 @@
       "last-updated": "Son yenilənmə {{ago}}",
       "refresh": "Yenilə",
       "load-error": "Statistikanı yükləmək alınmadı"
+    },
+    "audit-logs": {
+      "action-placeholder": "Action, e.g. auth.sign_in",
+      "apply": "Apply",
+      "column-action": "Action",
+      "column-actor": "Actor",
+      "column-ip": "IP",
+      "column-outcome": "Outcome",
+      "column-time": "Time",
+      "description": "Recent sign-in, account, and export events. Passwords and tokens are never stored.",
+      "empty": "No audit events match these filters.",
+      "filters": "Filters",
+      "label": "Audit logs",
+      "load-error": "Failed to load audit logs.",
+      "outcome": "Outcome",
+      "outcome-all": "All outcomes",
+      "refresh": "Refresh",
+      "results": "Results ({{count}})",
+      "title": "Audit logs",
+      "username-placeholder": "Username (exact)"
     }
   },
   "space": {

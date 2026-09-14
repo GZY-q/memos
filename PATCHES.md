@@ -347,6 +347,15 @@ lines. Pure logic files were already separate.
   skip offscreen paint.
 - **Upstream risk**: low. Native Echo route like export; not a PublicMethod.
 
+## Patch 14: admin audit log settings UI
+
+- `web/src/components/Settings/AuditLogSection.tsx` + section registration —
+  admin Settings → 审计日志 filters by action/outcome/username.
+
+- **Reason**: query the audit trail without curl/SQL.
+- **Upstream risk**: low. Additive admin section; az locale filled from English
+  for the new keys so the locale-alignment test stays green.
+
 ## Repo hygiene notes (local only)
 
 Local runtime artifacts must stay out of git:

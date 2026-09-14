@@ -1,6 +1,7 @@
 import {
   AstroidIcon,
   BarChart3Icon,
+  ClipboardListIcon,
   CogIcon,
   DatabaseIcon,
   HeartHandshakeIcon,
@@ -18,6 +19,7 @@ import {
 import { type ComponentType } from "react";
 import AccessTokenSection from "@/components/Settings/AccessTokenSection";
 import AISection from "@/components/Settings/AISection";
+import AuditLogSection from "@/components/Settings/AuditLogSection";
 import InstanceSection from "@/components/Settings/InstanceSection";
 import MemberSection from "@/components/Settings/MemberSection";
 import MemoRelatedSettings from "@/components/Settings/MemoRelatedSettings";
@@ -46,7 +48,8 @@ export type SettingSectionKey =
   | "sso"
   | "tags"
   | "ai"
-  | "resource-stats";
+  | "resource-stats"
+  | "audit-logs";
 
 type SettingSectionScope = "basic" | "admin";
 
@@ -160,6 +163,13 @@ export const SETTINGS_SECTIONS: SettingSectionDefinition[] = [
     labelKey: "setting.resource-stats.label",
     icon: BarChart3Icon,
     component: ResourceStatsSection,
+  },
+  {
+    key: "audit-logs",
+    scope: "admin",
+    labelKey: "setting.audit-logs.label",
+    icon: ClipboardListIcon,
+    component: AuditLogSection,
   },
 ];
 
