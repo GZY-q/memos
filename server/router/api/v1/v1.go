@@ -110,6 +110,9 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 	// policy, used by both the gRPC-Gateway middleware and the Connect interceptor.
 	authorizer := NewAuthorizer(s.Store, s.Secret)
 
+	// Persist sensitive-op audit events to audit_log while keeping slog lines.
+	audit.SetDefault(audit.NewStoreLogger(s.Store, nil))
+
 	// Shared rate limiter so Connect and gRPC-Gateway spend the same per-IP budget.
 	rateLimiter := NewRateLimitInterceptor(DefaultRateLimitConfig())
 

@@ -103,4 +103,8 @@ type Driver interface {
 	CreateUserWithIdentity(ctx context.Context, createUser *User, createIdentity *UserIdentity) (*User, error)
 	ListUserIdentities(ctx context.Context, find *FindUserIdentity) ([]*UserIdentity, error)
 	DeleteUserIdentities(ctx context.Context, delete *DeleteUserIdentity) error
+
+	// AuditLog model related methods.
+	CreateAuditLog(ctx context.Context, create *AuditLog) (*AuditLog, error)
+	ListAuditLogs(ctx context.Context, find *FindAuditLog) ([]*AuditLog, error)
 }

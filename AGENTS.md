@@ -19,8 +19,9 @@ Memos is a self-hosted note-taking app.
 | Navigation / bookmarks start page | `web/src/modules/navigation/` | Self-contained; config stored as ARCHIVED+PRIVATE memo. Audit outside edits in `PATCHES.md`. |
 | TTS read-aloud | `internal/ai/tts/`, `ai_service.go`, `useTTSPlayer.ts` | Edge + Ark providers. |
 | Auth rate limit + export | `server/router/api/v1/rate_limit.go`, `export_handler.go` | Shared Connect+gateway limiter; `GET /api/v1/export/me`. |
-| Audit log | `server/audit/`, audit interceptor | `grep 'msg=audit'` in server logs. |
+| Audit log | `server/audit/`, `store/audit.go`, audit interceptor | slog + `audit_log` table; `grep 'msg=audit'`. |
 | SQLite FTS5 | `store/migration/sqlite/0.31/07__memo_fts.sql`, `internal/filter/render.go` | trigram `content.contains` path. |
+| PG/MySQL content indexes | `0.31/08__memo_content_*.sql` | optional pg_trgm GIN; ngram FULLTEXT prep. |
 | Repo hygiene | `.gitignore` | Never commit `*.db`, `.playwright-cli/`, or `server/router/frontend/dist/`. |
 
 When rebasing upstream, re-read `PATCHES.md` first.

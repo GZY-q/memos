@@ -149,3 +149,25 @@ CREATE TABLE `user_identity` (
 );
 
 CREATE INDEX `idx_user_identity_user_id` ON `user_identity`(`user_id`);
+
+-- memo full-text search (ngram; does not change CEL LIKE semantics —
+-- preparatory index for a future MATCH AGAINST path)
+ALTER TABLE `memo` ADD FULLTEXT INDEX `idx_memo_content_ngram` (`content`) WITH PARSER ngram;
+
+-- audit_log
+CREATE TABLE `audit_log` (
+  `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `created_ts` BIGINT NOT NULL DEFAULT (UNIX_TIMESTAMP()),
+  `actor_user_id` INT NOT NULL DEFAULT 0,
+  `actor_username` VARCHAR(256) NOT NULL DEFAULT '',
+  `action` VARCHAR(256) NOT NULL,
+  `procedure` VARCHAR(512) NOT NULL DEFAULT '',
+  `client_ip` VARCHAR(128) NOT NULL DEFAULT '',
+  `outcome` VARCHAR(32) NOT NULL DEFAULT 'success',
+  `detail` TEXT NOT NULL,
+  CHECK (`outcome` IN ('success', 'denied', 'error'))
+);
+
+CREATE INDEX `idx_audit_log_created_ts` ON `audit_log`(`created_ts` DESC);
+CREATE INDEX `idx_audit_log_action` ON `audit_log`(`action`, `created_ts` DESC);
+CREATE INDEX `idx_audit_log_actor` ON `audit_log`(`actor_user_id`, `created_ts` DESC);

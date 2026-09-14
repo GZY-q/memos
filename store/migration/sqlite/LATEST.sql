@@ -172,3 +172,20 @@ CREATE TRIGGER memo_fts_au AFTER UPDATE OF content ON memo BEGIN
   INSERT INTO memo_fts (memo_fts, rowid, content) VALUES ('delete', old.id, old.content);
   INSERT INTO memo_fts (rowid, content) VALUES (new.id, new.content);
 END;
+
+-- audit_log
+CREATE TABLE audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_ts BIGINT NOT NULL DEFAULT (strftime('%s', 'now')),
+  actor_user_id INTEGER NOT NULL DEFAULT 0,
+  actor_username TEXT NOT NULL DEFAULT '',
+  action TEXT NOT NULL,
+  procedure TEXT NOT NULL DEFAULT '',
+  client_ip TEXT NOT NULL DEFAULT '',
+  outcome TEXT NOT NULL CHECK (outcome IN ('success', 'denied', 'error')) DEFAULT 'success',
+  detail TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX idx_audit_log_created_ts ON audit_log(created_ts DESC);
+CREATE INDEX idx_audit_log_action ON audit_log(action, created_ts DESC);
+CREATE INDEX idx_audit_log_actor ON audit_log(actor_user_id, created_ts DESC);

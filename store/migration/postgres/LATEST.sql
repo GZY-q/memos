@@ -149,3 +149,41 @@ CREATE TABLE user_identity (
 );
 
 CREATE INDEX idx_user_identity_user_id ON user_identity(user_id);
+
+-- memo content trigram (optional; requires pg_trgm). Accelerates ILIKE
+-- content.contains when available; otherwise the portable ILIKE path remains.
+DO $$
+BEGIN
+  BEGIN
+    CREATE EXTENSION IF NOT EXISTS pg_trgm;
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE NOTICE 'pg_trgm unavailable, skipping memo content trigram index: %', SQLERRM;
+      RETURN;
+  END;
+
+  BEGIN
+    CREATE INDEX IF NOT EXISTS idx_memo_content_trgm
+      ON memo USING gin (content gin_trgm_ops);
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE NOTICE 'failed to create memo content trigram index: %', SQLERRM;
+  END;
+END $$;
+
+-- audit_log
+CREATE TABLE audit_log (
+  id SERIAL PRIMARY KEY,
+  created_ts BIGINT NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW()),
+  actor_user_id INTEGER NOT NULL DEFAULT 0,
+  actor_username TEXT NOT NULL DEFAULT '',
+  action TEXT NOT NULL,
+  procedure TEXT NOT NULL DEFAULT '',
+  client_ip TEXT NOT NULL DEFAULT '',
+  outcome TEXT NOT NULL CHECK (outcome IN ('success', 'denied', 'error')) DEFAULT 'success',
+  detail TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX idx_audit_log_created_ts ON audit_log(created_ts DESC);
+CREATE INDEX idx_audit_log_action ON audit_log(action, created_ts DESC);
+CREATE INDEX idx_audit_log_actor ON audit_log(actor_user_id, created_ts DESC);

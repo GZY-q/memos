@@ -281,16 +281,24 @@ Outside `modules/navigation/` for TTS only:
 - **Upstream risk**: low-medium. Search engines stay inside the navigation module.
   TTS store is additive next to the existing hook.
 
-## Patch 9: SQLite FTS5 trigram search path
+## Patch 9: SQLite FTS5 trigram + optional PG/MySQL content indexes
 
 - `store/migration/sqlite/0.31/07__memo_fts.sql` + `LATEST.sql` — external-content
   FTS5 table (`tokenize=trigram`) with insert/update/delete triggers and backfill.
 - `internal/filter/render.go` — SQLite `content.contains` with ≥3 runes compiles
   to `memo_fts MATCH` phrase query; shorter needles and other dialects keep LIKE.
+- `store/migration/postgres/0.31/08__memo_content_trgm.sql` + `LATEST.sql` —
+  best-effort `pg_trgm` GIN index in a DO block (no-op when CREATE EXTENSION is
+  denied). Planner can then use the index for the existing `ILIKE` path; render
+  is unchanged.
+- `store/migration/mysql/0.31/08__memo_content_ngram.sql` + `LATEST.sql` —
+  InnoDB FULLTEXT ngram index (idempotent via information_schema + PREPARE).
+  LIKE is intentionally not rewritten to MATCH AGAINST (boolean-mode semantics
+  differ); the index only prepares a future MATCH path.
 
 - **Reason**: substring search was a full-table LIKE scan.
-- **Upstream risk**: medium (migration file + LATEST + filter renderer). MySQL/Postgres
-  intentionally stay on LIKE in this pass to avoid requiring extensions.
+- **Upstream risk**: medium (migration files + LATEST + filter renderer).
+
 
 ## Patch 8: auth rate limit + user export + offline shell
 
@@ -311,9 +319,12 @@ Outside `modules/navigation/` for TTS only:
 - `server/audit/` — structured slog audit events (no password/token in details).
 - Connect interceptor after Auth: SignIn/SignOut, Create/Update/DeleteUser,
   PAT create/delete; export success also logs `user.export`.
+- `store/audit.go` + driver `audit.go` + `audit_log` tables (all three engines,
+  idempotent migrations) — `StoreLogger` dual-writes slog + table.
 
-- **Reason**: self-hosted operators need a trail of auth and account changes.
-- **Upstream risk**: low. Additive interceptor; greppable `msg=audit` lines.
+- **Reason**: self-hosted operators need a queryable trail of auth and account changes.
+- **Upstream risk**: medium (new table + Driver interface methods). Additive interceptor;
+  greppable `msg=audit` lines remain.
 
 ## Repo hygiene notes (local only)
 
