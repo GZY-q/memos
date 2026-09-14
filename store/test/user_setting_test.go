@@ -638,6 +638,88 @@ func TestUserSettingUpdatePATLastUsed(t *testing.T) {
 	ts.Close()
 }
 
+func TestUserSettingUpdatePATLastUsedThrottled(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	user, err := createTestingHostUser(ctx, ts)
+	require.NoError(t, err)
+
+	patHash := "pat-hash-throttled"
+	err = ts.AddUserPersonalAccessToken(ctx, user.ID, &storepb.PersonalAccessTokensUserSetting_PersonalAccessToken{
+		TokenId:   "pat-throttled",
+		TokenHash: patHash,
+	})
+	require.NoError(t, err)
+
+	// First write always lands.
+	first := timestamppb.New(time.Now().Add(-time.Hour))
+	require.NoError(t, ts.UpdatePATLastUsed(ctx, user.ID, "pat-throttled", first))
+
+	// A bump well within the throttle window must not rewrite the stored blob.
+	bumped := timestamppb.New(first.AsTime().Add(time.Minute))
+	require.NoError(t, ts.UpdatePATLastUsed(ctx, user.ID, "pat-throttled", bumped))
+
+	pats, err := ts.GetUserPersonalAccessTokens(ctx, user.ID)
+	require.NoError(t, err)
+	require.Len(t, pats, 1)
+	require.Equal(t, first.AsTime(), pats[0].LastUsedAt.AsTime())
+
+	// A bump past the throttle interval must persist.
+	later := timestamppb.New(first.AsTime().Add(10 * time.Minute))
+	require.NoError(t, ts.UpdatePATLastUsed(ctx, user.ID, "pat-throttled", later))
+
+	pats, err = ts.GetUserPersonalAccessTokens(ctx, user.ID)
+	require.NoError(t, err)
+	require.Equal(t, later.AsTime(), pats[0].LastUsedAt.AsTime())
+
+	ts.Close()
+}
+
+func TestUserSettingGetUserByPATHashCacheConsistency(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ts := NewTestingStore(ctx, t)
+	user, err := createTestingHostUser(ctx, ts)
+	require.NoError(t, err)
+
+	patHash := "pat-hash-cache-consistency"
+	err = ts.AddUserPersonalAccessToken(ctx, user.ID, &storepb.PersonalAccessTokensUserSetting_PersonalAccessToken{
+		TokenId:   "pat-cache-1",
+		TokenHash: patHash,
+	})
+	require.NoError(t, err)
+
+	// Prime the hash cache, then confirm repeated lookups still resolve.
+	first, err := ts.GetUserByPATHash(ctx, patHash)
+	require.NoError(t, err)
+	require.Equal(t, user.ID, first.UserID)
+	second, err := ts.GetUserByPATHash(ctx, patHash)
+	require.NoError(t, err)
+	require.Equal(t, first.UserID, second.UserID)
+	require.Equal(t, first.PAT.TokenId, second.PAT.TokenId)
+
+	// A newly added hash must be visible immediately (no stale negative cache).
+	newHash := "pat-hash-added-later"
+	_, err = ts.GetUserByPATHash(ctx, newHash)
+	require.Error(t, err)
+	err = ts.AddUserPersonalAccessToken(ctx, user.ID, &storepb.PersonalAccessTokensUserSetting_PersonalAccessToken{
+		TokenId:   "pat-cache-2",
+		TokenHash: newHash,
+	})
+	require.NoError(t, err)
+	added, err := ts.GetUserByPATHash(ctx, newHash)
+	require.NoError(t, err)
+	require.Equal(t, "pat-cache-2", added.PAT.TokenId)
+
+	// Revocation must invalidate the cached hit on the next lookup.
+	require.NoError(t, ts.RemoveUserPersonalAccessToken(ctx, user.ID, "pat-cache-1"))
+	_, err = ts.GetUserByPATHash(ctx, patHash)
+	require.Error(t, err)
+
+	ts.Close()
+}
+
 func TestUserSettingGetUserByPATHashWithExpiredToken(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

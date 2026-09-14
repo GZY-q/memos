@@ -38,6 +38,8 @@ func GetDeleteUserFailpoint(ctx context.Context) DeleteUserFailpoint {
 
 func (s *Store) deleteUserCache(ctx context.Context, userID int32, result *DeleteUserResult) {
 	s.userCache.Delete(ctx, userCacheKey(userID))
+	// A deleted user's PATs must stop authenticating immediately.
+	s.clearPATHashCache(ctx)
 	if result == nil {
 		return
 	}

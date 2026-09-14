@@ -31,6 +31,9 @@ type Store struct {
 	instanceSettingCache *cache.Cache // cache for instance settings
 	userCache            *cache.Cache // cache for users
 	userSettingCache     *cache.Cache // cache for user settings
+	// patHashCache maps PAT token hashes to the resolving user/PAT so auth
+	// does not re-scan every PERSONAL_ACCESS_TOKENS row on each request.
+	patHashCache *cache.Cache
 
 	// storageDriverCache reuses object-storage clients across requests, keyed
 	// by the resolved configuration. Reset whenever the STORAGE setting changes.
@@ -61,6 +64,7 @@ func New(driver Driver, profile *profile.Profile) *Store {
 		instanceSettingCache: cache.New(cacheConfig),
 		userCache:            cache.New(cacheConfig),
 		userSettingCache:     cache.New(cacheConfig),
+		patHashCache:         cache.New(cacheConfig),
 		deploymentConfig: &deploymentConfiguration{
 			identityProviders: map[string]*storepb.IdentityProvider{},
 			instanceSettings:  map[storepb.InstanceSettingKey]*storepb.InstanceSetting{},
@@ -84,6 +88,7 @@ func (s *Store) Close() error {
 	s.instanceSettingCache.Close()
 	s.userCache.Close()
 	s.userSettingCache.Close()
+	s.patHashCache.Close()
 
 	return s.driver.Close()
 }

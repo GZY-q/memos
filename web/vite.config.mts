@@ -55,6 +55,24 @@ export default defineConfig({
               name: "leaflet-vendor",
               test: /node_modules[\\/]leaflet([\\/]|$)/,
             },
+            {
+              // Stable vendor chunks: app-code deploys keep the same content hash
+              // so browsers can reuse the cached React/markdown libraries.
+              name: "react-vendor",
+              test: /node_modules[\\/](react-dom|react-router-dom|react-router|react|scheduler)([\\/]|$)/,
+            },
+            {
+              name: "query-vendor",
+              test: /node_modules[\\/]@tanstack[\\/](react-query|query-core)([\\/]|$)/,
+            },
+            {
+              name: "markdown-vendor",
+              test: /node_modules[\\/](react-markdown|unified|micromark|mdast-util|unist-util-visit|remark-|rehype-)/,
+            },
+            {
+              name: "editor-vendor",
+              test: /node_modules[\\/](@codemirror|@lezer)([\\/]|$)/,
+            },
           ],
         },
       },

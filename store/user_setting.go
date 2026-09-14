@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -122,11 +123,84 @@ func (s *Store) DeleteUserSettings(ctx context.Context, delete *DeleteUserSettin
 	for _, setting := range existing {
 		s.userSettingCache.Delete(ctx, getUserSettingCacheKey(setting.UserId, setting.Key.String()))
 	}
+	if delete.Key == storepb.UserSetting_KEY_UNSPECIFIED || delete.Key == storepb.UserSetting_PERSONAL_ACCESS_TOKENS {
+		// Revoking the PAT setting invalidates every hash that may have been
+		// resolved from that user's token list.
+		s.clearPATHashCache(ctx)
+	}
 	return nil
 }
 
-// GetUserByPATHash finds a user by PAT hash.
+// patHashCachePrefix namespaces PAT-hash cache keys so they cannot collide
+// with any other store cache key format.
+const patHashCachePrefix = "pat-hash:"
+
+// patHashCacheEntry is the cached mapping from a PAT token hash to its owner.
+// The User is re-resolved through userCache on each hit so role/status changes
+// still take effect without waiting for this entry to expire.
+type patHashCacheEntry struct {
+	UserID int32
+	PAT    *storepb.PersonalAccessTokensUserSetting_PersonalAccessToken
+}
+
+func patHashCacheKey(tokenHash string) string {
+	return patHashCachePrefix + tokenHash
+}
+
+// clearPATHashCache drops all cached PAT-hash mappings. Called whenever the
+// set of PATs may have changed (create/revoke/delete user). Last-used bumps
+// refresh the affected entry in place instead of clearing everything.
+func (s *Store) clearPATHashCache(ctx context.Context) {
+	s.patHashCache.Clear(ctx)
+}
+
+// refreshPATHashCacheLastUsed updates the cached PAT (if any) so the auth path
+// sees a consistent last-used timestamp without a driver round-trip.
+func (s *Store) refreshPATHashCacheLastUsed(ctx context.Context, tokenHash string, lastUsed *timestamppb.Timestamp) {
+	cached, ok := s.patHashCache.Get(ctx, patHashCacheKey(tokenHash))
+	if !ok {
+		return
+	}
+	entry, ok := cached.(*patHashCacheEntry)
+	if !ok || entry.PAT == nil {
+		s.patHashCache.Delete(ctx, patHashCacheKey(tokenHash))
+		return
+	}
+	updated, ok := proto.Clone(entry.PAT).(*storepb.PersonalAccessTokensUserSetting_PersonalAccessToken)
+	if !ok {
+		s.patHashCache.Delete(ctx, patHashCacheKey(tokenHash))
+		return
+	}
+	updated.LastUsedAt = lastUsed
+	s.patHashCache.Set(ctx, patHashCacheKey(tokenHash), &patHashCacheEntry{
+		UserID: entry.UserID,
+		PAT:    updated,
+	})
+}
+
+// GetUserByPATHash finds a user by PAT hash. Successful lookups are cached so
+// PAT auth does not re-scan every user's PERSONAL_ACCESS_TOKENS JSON row on
+// each request (the Postgres driver is O(users) without this).
 func (s *Store) GetUserByPATHash(ctx context.Context, tokenHash string) (*PATQueryResult, error) {
+	if cached, ok := s.patHashCache.Get(ctx, patHashCacheKey(tokenHash)); ok {
+		entry, ok := cached.(*patHashCacheEntry)
+		if ok && entry.PAT != nil {
+			user, err := s.GetUser(ctx, &FindUser{ID: &entry.UserID})
+			if err != nil {
+				return nil, err
+			}
+			if user == nil {
+				s.patHashCache.Delete(ctx, patHashCacheKey(tokenHash))
+				return nil, errors.New("user not found for PAT")
+			}
+			return &PATQueryResult{
+				UserID: entry.UserID,
+				User:   user,
+				PAT:    entry.PAT,
+			}, nil
+		}
+	}
+
 	result, err := s.driver.GetUserByPATHash(ctx, tokenHash)
 	if err != nil {
 		return nil, err
@@ -141,6 +215,11 @@ func (s *Store) GetUserByPATHash(ctx context.Context, tokenHash string) (*PATQue
 		return nil, errors.New("user not found for PAT")
 	}
 	result.User = user
+
+	s.patHashCache.Set(ctx, patHashCacheKey(tokenHash), &patHashCacheEntry{
+		UserID: result.UserID,
+		PAT:    result.PAT,
+	})
 
 	return result, nil
 }
@@ -263,7 +342,13 @@ func (s *Store) AddUserPersonalAccessToken(ctx context.Context, userID int32, to
 			},
 		},
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	// A newly minted token must be resolvable immediately; drop any stale miss
+	// that may have been cached for this hash before it existed.
+	s.patHashCache.Delete(ctx, patHashCacheKey(token.TokenHash))
+	return nil
 }
 
 // RemoveUserPersonalAccessToken removes a PAT from the user.
@@ -276,11 +361,14 @@ func (s *Store) RemoveUserPersonalAccessToken(ctx context.Context, userID int32,
 		return err
 	}
 
+	removedHash := ""
 	newTokens := make([]*storepb.PersonalAccessTokensUserSetting_PersonalAccessToken, 0, len(existingTokens))
 	for _, token := range existingTokens {
 		if token.TokenId != tokenID {
 			newTokens = append(newTokens, token)
+			continue
 		}
+		removedHash = token.TokenHash
 	}
 
 	_, err = s.UpsertUserSetting(ctx, &storepb.UserSetting{
@@ -292,8 +380,20 @@ func (s *Store) RemoveUserPersonalAccessToken(ctx context.Context, userID int32,
 			},
 		},
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	// Revocation must take effect on the next request, not after cache TTL.
+	if removedHash != "" {
+		s.patHashCache.Delete(ctx, patHashCacheKey(removedHash))
+	}
+	return nil
 }
+
+// patLastUsedWriteInterval throttles PAT last-used DB writes. Every PAT-authenticated
+// request used to rewrite the whole tokens JSON blob; coalescing to this interval
+// removes that write amplification while keeping the UI timestamp useful.
+const patLastUsedWriteInterval = 5 * time.Minute
 
 // UpdatePATLastUsed updates the last_used_at timestamp of a PAT.
 func (s *Store) UpdatePATLastUsed(ctx context.Context, userID int32, tokenID string, lastUsed *timestamppb.Timestamp) error {
@@ -306,33 +406,49 @@ func (s *Store) UpdatePATLastUsed(ctx context.Context, userID int32, tokenID str
 	}
 
 	for i, token := range tokens {
-		if token.TokenId == tokenID {
-			// Concurrent requests can finish out of order. Never let an older usage
-			// timestamp overwrite a newer one.
-			if lastUsed != nil && token.LastUsedAt != nil && !token.LastUsedAt.AsTime().Before(lastUsed.AsTime()) {
+		if token.TokenId != tokenID {
+			continue
+		}
+		// Concurrent requests can finish out of order. Never let an older usage
+		// timestamp overwrite a newer one.
+		if lastUsed != nil && token.LastUsedAt != nil {
+			existing := token.LastUsedAt.AsTime()
+			incoming := lastUsed.AsTime()
+			if !existing.Before(incoming) {
 				return nil
 			}
-
-			updatedToken, ok := proto.Clone(token).(*storepb.PersonalAccessTokensUserSetting_PersonalAccessToken)
-			if !ok {
-				return errors.Errorf("failed to clone personal access token")
+			// Throttle sub-interval bumps so busy PAT clients do not rewrite the
+			// blob on every request.
+			if existing.Add(patLastUsedWriteInterval).After(incoming) {
+				return nil
 			}
-			updatedToken.LastUsedAt = lastUsed
-			updatedTokens := make([]*storepb.PersonalAccessTokensUserSetting_PersonalAccessToken, len(tokens))
-			copy(updatedTokens, tokens)
-			updatedTokens[i] = updatedToken
+		}
 
-			_, err = s.UpsertUserSetting(ctx, &storepb.UserSetting{
-				UserId: userID,
-				Key:    storepb.UserSetting_PERSONAL_ACCESS_TOKENS,
-				Value: &storepb.UserSetting_PersonalAccessTokens{
-					PersonalAccessTokens: &storepb.PersonalAccessTokensUserSetting{
-						Tokens: updatedTokens,
-					},
+		updatedToken, ok := proto.Clone(token).(*storepb.PersonalAccessTokensUserSetting_PersonalAccessToken)
+		if !ok {
+			return errors.Errorf("failed to clone personal access token")
+		}
+		updatedToken.LastUsedAt = lastUsed
+		updatedTokens := make([]*storepb.PersonalAccessTokensUserSetting_PersonalAccessToken, len(tokens))
+		copy(updatedTokens, tokens)
+		updatedTokens[i] = updatedToken
+
+		_, err = s.UpsertUserSetting(ctx, &storepb.UserSetting{
+			UserId: userID,
+			Key:    storepb.UserSetting_PERSONAL_ACCESS_TOKENS,
+			Value: &storepb.UserSetting_PersonalAccessTokens{
+				PersonalAccessTokens: &storepb.PersonalAccessTokensUserSetting{
+					Tokens: updatedTokens,
 				},
-			})
+			},
+		})
+		if err != nil {
 			return err
 		}
+		if token.TokenHash != "" {
+			s.refreshPATHashCacheLastUsed(ctx, token.TokenHash, lastUsed)
+		}
+		return nil
 	}
 
 	return nil

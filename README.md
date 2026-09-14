@@ -1,6 +1,9 @@
-> ✨ Featured sponsor: [CodeRabbit — Industry-leading AI code reviews](https://coderabbit.link/usememos).
+> This repository is a **community fork** of [usememos/memos](https://github.com/usememos/memos).
+> Core product vision, branding, and most of the codebase belong to the upstream Memos project and its contributors.
+> Please prefer contributing generally useful features upstream. Fork-specific additions are documented below.
+> Upstream: https://github.com/usememos/memos · Docs: https://usememos.com/docs · Demo: https://demo.usememos.com/
 
-# Memos
+# Memos (fork)
 
 <img src="./web/public/logo.webp" alt="" width="96" align="right">
 
@@ -8,10 +11,12 @@
 
 Memos is an open-source, self-hosted home for short-form thinking. Daily notes, links, work logs, and snippets flow into a chronological Markdown timeline—on infrastructure you control, without the overhead of an all-in-one workspace.
 
-**[Run with Docker](#quick-start)** · **[Try the live demo](https://demo.usememos.com/)** · [Read the docs](https://usememos.com/docs)
+This fork keeps that foundation and adds a few self-hosted operator and daily-driver improvements (navigation start page, TTS, audit trail, faster search, offline drafts, journal view).
 
-[![GitHub stars](https://img.shields.io/github/stars/usememos/memos?style=flat-square&logo=github&label=Stars)](https://github.com/usememos/memos)
-[![Latest release](https://img.shields.io/github/v/release/usememos/memos?style=flat-square&label=Release)](https://github.com/usememos/memos/releases)
+**[Quick start](#quick-start)** · **[Upstream demo](https://demo.usememos.com/)** · **[Upstream docs](https://usememos.com/docs)**
+
+[![GitHub stars](https://img.shields.io/github/stars/usememos/memos?style=flat-square&logo=github&label=Upstream%20Stars)](https://github.com/usememos/memos)
+[![Latest release](https://img.shields.io/github/v/release/usememos/memos?style=flat-square&label=Upstream%20Release)](https://github.com/usememos/memos/releases)
 [![Docker pulls](https://img.shields.io/docker/pulls/neosmemo/memos?style=flat-square&logo=docker)](https://hub.docker.com/r/neosmemo/memos)
 [![MIT license](https://img.shields.io/github/license/usememos/memos?style=flat-square)](LICENSE)
 
@@ -24,11 +29,28 @@ Memos is an open-source, self-hosted home for short-form thinking. Daily notes, 
 - **Share selectively** — Keep memos private or publish only what you choose.
 - **Keep control** — Self-host Memos with [zero telemetry](https://usememos.com/features/data-ownership) and [MIT-licensed source](LICENSE).
 
-[Explore all features →](https://usememos.com/features)
+[Explore all upstream features →](https://usememos.com/features)
+
+## What this fork adds
+
+| Area | What you get |
+| --- | --- |
+| **Navigation start page** | Bookmark card wall, browser import, custom search engines (`{q}`), clipboard history. Config is local-first (IndexedDB) with optional memo backup. |
+| **Journal** | `/journal` day view with day-scoped composer and sidebar entry. |
+| **TTS read-aloud** | Microsoft Edge (keyless) or Volcengine Ark; playback queue; IndexedDB audio cache. |
+| **Import** | Settings → Import: Flomo JSON, CSV, Obsidian `.md` / zip. |
+| **Offline drafts** | Failed saves queue locally and auto-flush when the network returns. |
+| **Faster content search** | SQLite FTS5 trigram, MySQL ngram `MATCH`, optional Postgres `pg_trgm`; `attachment_filename.contains` / `comment.contains`. |
+| **Operator hardening** | Per-IP rate limit on sign-in / refresh / registration; `GET /api/v1/export/me`; audit log (table + admin UI + CSV). |
+| **PWA shell** | Production service worker caches the SPA shell only (never API/SSE). |
+
+Rebase notes: [`PATCHES.md`](./PATCHES.md). Contributor conventions: [`AGENTS.md`](./AGENTS.md).
 
 ## Quick Start
 
-Run Memos with Docker:
+### Docker (upstream image)
+
+Stock Memos without fork features:
 
 ```bash
 docker run -d \
@@ -38,13 +60,42 @@ docker run -d \
   neosmemo/memos:stable
 ```
 
-Other install options are in the [deployment guide](https://usememos.com/docs/deploy).
+Other install options: [upstream deployment guide](https://usememos.com/docs/deploy).
+
+### Development (this fork)
+
+```bash
+# Backend (SQLite by default)
+go run ./cmd/memos --port 8081
+
+# Frontend (proxies API to :8081)
+cd web && pnpm install && pnpm dev
+# open http://localhost:3001
+```
+
+Useful APIs after sign-in:
+
+```bash
+# Personal export (Bearer access token or PAT)
+curl -H "Authorization: Bearer $TOKEN" \
+  'http://localhost:8081/api/v1/export/me?format=markdown'
+
+# Audit log (instance admin only)
+curl -H "Authorization: Bearer $ADMIN_TOKEN" \
+  'http://localhost:8081/api/v1/audit-logs?limit=50'
+```
 
 ## Web Clipper
 
 Save pages, selections, and images from your browser straight into Memos as source-linked Markdown. Get the [Memos Web Clipper](https://usememos.com/web-clipper) for [Chrome](https://chromewebstore.google.com/detail/memos-web-clipper/nebaoebnljalfegiidibihhkebeiklbl) or [Firefox](https://addons.mozilla.org/en-US/firefox/addon/memos-web-clipper/).
 
-## Sponsors
+## Credits & license
+
+- **Upstream**: [usememos/memos](https://github.com/usememos/memos) and all of its contributors. This fork would not exist without their work.
+- **License**: [MIT](./LICENSE), same as upstream.
+- Upstream sponsors are listed below — please consider supporting the original project.
+
+### Upstream sponsors
 
 <p>
   <a href="https://coderabbit.link/usememos" target="_blank" rel="noopener"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/usememos/.github/refs/heads/main/assets/sponsors/coderabbit/white-typemark.svg" /><img src="https://raw.githubusercontent.com/usememos/.github/refs/heads/main/assets/sponsors/coderabbit/orange-typemark.svg" alt="CodeRabbit — Cut code review time and bugs in half" height="40" align="middle" /></picture></a>
@@ -54,13 +105,14 @@ Save pages, selections, and images from your browser straight into Memos as sour
   <a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=memos" target="_blank" rel="noopener"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/usememos/.github/refs/heads/main/assets/sponsors/testmuai/white.png" /><img src="https://raw.githubusercontent.com/usememos/.github/refs/heads/main/assets/sponsors/testmuai/black.png" alt="TestMu AI — The world’s first full-stack Agentic AI Quality Engineering platform" height="30" align="middle" /></picture></a>
 </p>
 
-Love Memos? [Sponsor the project on GitHub](https://github.com/sponsors/usememos).
+Love Memos? [Sponsor upstream on GitHub](https://github.com/sponsors/usememos).
 
-## Get Help
+## Get help
 
-Read the [docs](https://usememos.com/docs), join [Discord](https://discord.gg/tfPJa4UmAv), or ask in [GitHub Discussions](https://github.com/usememos/memos/discussions). Found a bug or have an idea? [Open an issue](https://github.com/usememos/memos/issues/new/choose). To contribute, see the [contributing guide](https://usememos.com/docs/development/contributing).
+- **Upstream**: [docs](https://usememos.com/docs), [Discord](https://discord.gg/tfPJa4UmAv), [Discussions](https://github.com/usememos/memos/discussions), [issues](https://github.com/usememos/memos/issues/new/choose).
+- **This fork**: open an issue here for fork-specific behavior (navigation, TTS, audit, import, search). Prefer filing general Memos bugs upstream.
 
-## Star History
+## Upstream star history
 
 <a href="https://www.star-history.com/?repos=usememos%2Fmemos&amp;type=date&amp;legend=top-left">
   <picture>
