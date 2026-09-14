@@ -5,9 +5,9 @@ import { getAccessToken } from "@/auth-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { Role } from "@/types/proto/api/v1/user_service_pb";
+import useCurrentUser from "@/hooks/useCurrentUser";
 import { useTranslate } from "@/utils/i18n";
+import { isSuperUser } from "@/utils/user";
 import SettingGroup from "./SettingGroup";
 import { SettingPanel } from "./SettingList";
 import SettingSection from "./SettingSection";
@@ -67,8 +67,8 @@ const formatTimestamp = (value: string): string => {
  */
 const AuditLogSection = () => {
   const t = useTranslate();
-  const { currentUser } = useCurrentUser();
-  const isAdmin = currentUser?.role === Role.ADMIN;
+  const currentUser = useCurrentUser();
+  const isAdmin = Boolean(isSuperUser(currentUser));
 
   const [action, setAction] = useState("");
   const [outcome, setOutcome] = useState<string>(OUTCOME_FILTERS[0]);
