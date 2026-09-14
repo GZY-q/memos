@@ -13,6 +13,7 @@
  *   sidebar bundle.
  */
 
+export * from "./bookmarks";
 export * from "./cache";
 export * from "./clipboard";
 export * from "./controller";
@@ -20,6 +21,7 @@ export * from "./editor";
 export * from "./i18n";
 export * from "./merge";
 export * from "./reorder";
+export * from "./searchEngines";
 export * from "./storage";
 export * from "./types";
 export * from "./useNavConfig";

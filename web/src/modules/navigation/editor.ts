@@ -103,6 +103,16 @@ export const addGroup = (config: NavConfig, name: string): NavConfig => {
   return { ...config, groups: [...config.groups, group] };
 };
 
+/** Collapses or expands every group. Returns the same reference when already uniform. */
+export const setAllGroupsCollapsed = (config: NavConfig, collapsed: boolean): NavConfig => {
+  if (config.groups.length === 0) return config;
+  if (config.groups.every((group) => group.collapsed === collapsed)) return config;
+  return {
+    ...config,
+    groups: config.groups.map((group) => (group.collapsed === collapsed ? group : { ...group, collapsed })),
+  };
+};
+
 export const renameGroup = (config: NavConfig, groupId: string, name: string): NavConfig => {
   const trimmed = name.trim().slice(0, 100);
   if (!trimmed) return config;

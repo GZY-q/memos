@@ -43,7 +43,12 @@ export interface NavConfig {
   tombstones: NavTombstone[];
 }
 
-export const NAV_CONFIG_CONTENT_LIMIT = 100_000;
+/**
+ * Soft ceiling for the config memo body. Keep in sync with the instance
+ * `contentLengthLimit` (default 8192; raise in Instance → Memo related when
+ * importing large bookmark walls).
+ */
+export const NAV_CONFIG_CONTENT_LIMIT = 65000;
 
 export const NAV_STORAGE_KEYS = {
   initialized: "nav-config-initialized",

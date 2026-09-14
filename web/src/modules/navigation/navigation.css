@@ -101,6 +101,57 @@
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 4%);
 }
 
+/* Search-engine chips (Google / Bing / 百度) inside the spotlight pill. */
+.nav-engine-tabs {
+  gap: 2px;
+}
+
+.nav-engine-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 0.45rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: color-mix(in oklab, var(--muted-foreground) 90%, transparent);
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.nav-engine-chip:hover {
+  color: var(--foreground);
+  background: color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+
+.nav-engine-chip[data-active="true"] {
+  color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+}
+
+/* Site logos on cards — letter tint sits under the favicon until it loads. */
+.nav-page-logo-frame {
+  border: 1px solid color-mix(in oklab, var(--border) 75%, transparent);
+  background: color-mix(in oklab, var(--muted) 55%, var(--card));
+}
+
+.nav-page-logo {
+  /* Tiny 16px .ico files still read clearly inside the 32px tile. */
+  padding: 5px;
+  object-fit: contain;
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+}
+
+/* Skip layout/paint for offscreen cards on a 170+ tile wall. */
+.nav-page-card-shell {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 104px;
+}
+
 /* Hover/focus edit affordances sit outside the card anchor so the whole card
    remains a single link hit-target. */
 .nav-page-card-shell:focus-within .nav-page-card-actions,

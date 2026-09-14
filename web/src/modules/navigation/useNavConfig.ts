@@ -9,8 +9,8 @@
  * `persistConfig`s from the same stale `rev` (last-write-wins would drop edits).
  */
 
-import { useCallback, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useRef } from "react";
 import { loadOrSeedConfig, type NavConfigState, type PersistResult, persistConfig, resetConfig } from "./controller";
 import type { NavConfig } from "./types";
 
@@ -47,6 +47,10 @@ export const useNavConfig = () => {
       });
       latestStateRef.current = { config: result.config, memoName: result.memoName, source: "memo" };
     },
+    onError: () => {
+      // Drop any optimistic write and reload the last server truth.
+      void queryClient.invalidateQueries({ queryKey: navConfigKeys.state() });
+    },
   });
 
   const resetMutation = useMutation({
@@ -63,12 +67,19 @@ export const useNavConfig = () => {
   const saveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const save = useCallback(
     (next: NavConfig) => {
+      // Optimistic cache write so collapse/drag feel instant; rolled back on error.
+      const snapshot = latestStateRef.current;
+      if (snapshot) {
+        const optimistic: NavConfigState = { ...snapshot, config: next };
+        latestStateRef.current = optimistic;
+        queryClient.setQueryData<NavConfigState>(navConfigKeys.state(), optimistic);
+      }
       const run = () => saveMutation.mutateAsync(next);
       const result = saveQueueRef.current.then(run, run);
       saveQueueRef.current = result.catch(() => {});
       return result;
     },
-    [saveMutation],
+    [saveMutation, queryClient],
   );
 
   return {

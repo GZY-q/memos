@@ -2,9 +2,10 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  ChevronsDownUpIcon,
+  ChevronsUpDownIcon,
   ClipboardIcon,
   CopyIcon,
-  ExternalLinkIcon,
   FileIcon,
   GripVerticalIcon,
   ImageIcon,
@@ -12,19 +13,20 @@ import {
   PencilIcon,
   PlusIcon,
   RotateCcwIcon,
-  SearchIcon,
+  SquareArrowOutUpRightIcon,
   TrashIcon,
+  UploadIcon,
   WifiOffIcon,
   XIcon,
 } from "lucide-react";
 import type {
   ChangeEvent,
-  ClipboardEvent as ReactClipboardEvent,
   FormEvent,
+  ClipboardEvent as ReactClipboardEvent,
   DragEvent as ReactDragEvent,
   KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -33,6 +35,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { importBookmarkFolders, parseBookmarkHtml } from "./bookmarks";
 import {
   addClip,
   addFileClip,
@@ -43,21 +46,42 @@ import {
   formatClipSize,
   getClipBlob,
   type NavClipItem,
-  pruneClipBlobs,
   previewClip,
+  pruneClipBlobs,
   readClips,
   removeClip,
   writeClips,
 } from "./clipboard";
 import { useNavStrings } from "./i18n";
+import { buildConfigContent } from "./storage";
+import { NAV_CONFIG_CONTENT_LIMIT, type NavCard, type NavConfig, type NavGroup } from "./types";
 import "./navigation.css";
-import { isValidHttpUrl } from "./validate";
 import type { CardDraft, CardDraftError } from "./editor";
-import { addCard, addGroup, createCard, removeCard, removeGroup, renameGroup, updateCard, validateCardDraft } from "./editor";
+import {
+  addCard,
+  addGroup,
+  createCard,
+  removeCard,
+  removeGroup,
+  renameGroup,
+  setAllGroupsCollapsed,
+  updateCard,
+  validateCardDraft,
+} from "./editor";
+import { collectGroupUrls, OPEN_ALL_CONFIRM_THRESHOLD, openUrlsInTabs } from "./openLinks";
 import { moveCard, moveGroup } from "./reorder";
 import { cycleIndex, flattenCards, searchNavConfig } from "./search";
-import type { NavCard, NavConfig, NavGroup } from "./types";
+import {
+  buildSearchUrl,
+  cycleSearchEngine,
+  getSearchEngine,
+  readPreferredEngine,
+  SEARCH_ENGINES,
+  type SearchEngineId,
+  writePreferredEngine,
+} from "./searchEngines";
 import { useNavConfig } from "./useNavConfig";
+import { isValidHttpUrl } from "./validate";
 
 /**
  * M5: config-backed card wall with client-side search, drag-and-drop, and
@@ -103,6 +127,117 @@ interface ConfirmDialogState {
   groupId: string;
   cardId?: string;
 }
+
+const hostLabel = (url: string): string => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+};
+
+/** Deterministic pastel tint so letter avatars look distinct without assets. */
+const letterTint = (seed: string): { background: string; color: string } => {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  const hue = hash % 360;
+  return {
+    background: `oklch(0.86 0.06 ${hue})`,
+    color: `oklch(0.38 0.1 ${hue})`,
+  };
+};
+
+/** Only the site's own favicon — fail fast to a letter tile instead of chaining CDNs. */
+const logoSource = (url: string): string | null => {
+  try {
+    return `${new URL(url).origin}/favicon.ico`;
+  } catch {
+    return null;
+  }
+};
+
+const LOGO_TIMEOUT_MS = 1200;
+
+/** Site favicon, or a first-letter avatar when the icon is missing/slow. */
+const CardLogo = memo(function CardLogo({ url, title }: { url: string; title: string }) {
+  const frameRef = useRef<HTMLSpanElement>(null);
+  const [near, setNear] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const host = hostLabel(url);
+  const letter = (host || title || "?").charAt(0).toUpperCase();
+  const tint = useMemo(() => letterTint(host || title || url), [host, title, url]);
+  const src = useMemo(() => logoSource(url), [url]);
+
+  // Only start the network request once the tile is near the viewport.
+  useEffect(() => {
+    if (!src || failed || loaded || near) return;
+    const el = frameRef.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setNear(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setNear(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "180px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [src, failed, loaded, near]);
+
+  // Hanging requests never fire onError — cut over to the letter tile on a deadline.
+  useEffect(() => {
+    if (!near || !src || failed || loaded) return;
+    const timer = window.setTimeout(() => setFailed(true), LOGO_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [near, src, failed, loaded]);
+
+  if (!src || failed) {
+    return (
+      <span
+        ref={frameRef}
+        aria-hidden
+        className="nav-page-logo-frame flex size-8 shrink-0 items-center justify-center rounded-lg text-[13px] font-semibold"
+        style={tint}
+        data-testid="nav-card-logo-fallback"
+      >
+        {letter}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      ref={frameRef}
+      className="nav-page-logo-frame relative size-8 shrink-0 overflow-hidden rounded-lg"
+      data-testid="nav-card-logo-wrap"
+    >
+      <span aria-hidden className="absolute inset-0 flex items-center justify-center text-[13px] font-semibold" style={tint}>
+        {letter}
+      </span>
+      {near ? (
+        <img
+          src={src}
+          alt=""
+          width={32}
+          height={32}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setLoaded(true)}
+          onError={() => setFailed(true)}
+          className={`nav-page-logo absolute inset-0 size-full transition-opacity duration-150 ${loaded ? "opacity-100" : "opacity-0"}`}
+          data-testid="nav-card-logo"
+        />
+      ) : null}
+    </span>
+  );
+});
 
 const Card = ({
   card,
@@ -154,15 +289,17 @@ const Card = ({
         onDragEnd={onDragEndCard}
         data-drop-before={dropBefore ? "true" : undefined}
         data-drop-after={dropAfter ? "true" : undefined}
-        className="nav-page-card flex flex-col gap-1 rounded-xl p-4 focus:outline-none"
+        className="nav-page-card flex flex-col gap-2.5 rounded-xl p-3.5 focus:outline-none"
         data-testid="nav-card"
       >
-        <span className="flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{card.title}</span>
-          <ExternalLinkIcon className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="flex items-center gap-3">
+          <CardLogo url={card.url} title={card.title} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium text-foreground">{card.title}</span>
+            {card.note ? <span className="line-clamp-1 text-xs text-muted-foreground">{card.note}</span> : null}
+          </span>
         </span>
-        {card.note ? <span className="line-clamp-2 text-xs text-muted-foreground">{card.note}</span> : null}
-        <span className="truncate text-xs text-muted-foreground/70">{card.url}</span>
+        <span className="truncate text-xs text-muted-foreground/70">{hostLabel(card.url)}</span>
       </a>
       <div className="nav-page-card-actions pointer-events-none absolute end-2 top-2 flex gap-1 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
         <Button
@@ -244,7 +381,11 @@ const DegradedState = ({ onRetry }: { onRetry: () => void }) => {
 const SearchEmptyState = ({ onClear }: { onClear: () => void }) => {
   const t = useNavStrings();
   return (
-    <section className="border-border bg-card flex flex-col items-start gap-2 rounded-xl border p-6" role="status" data-testid="nav-search-empty">
+    <section
+      className="border-border bg-card flex flex-col items-start gap-2 rounded-xl border p-6"
+      role="status"
+      data-testid="nav-search-empty"
+    >
       <h2 className="text-sm font-medium text-foreground">{t.searchEmptyTitle}</h2>
       <p className="text-sm text-muted-foreground">{t.searchEmptyBody}</p>
       <Button variant="outline" size="sm" onClick={onClear}>
@@ -317,7 +458,11 @@ const CardDialog = ({
           {isCreate && groupOptions.length > 0 ? (
             <div className="flex flex-col gap-1.5">
               <Label>{t.fieldGroup}</Label>
-              <Select value={groupId} items={groupOptions.map((group) => ({ value: group.id, label: group.name }))} onValueChange={setGroupId}>
+              <Select
+                value={groupId}
+                items={groupOptions.map((group) => ({ value: group.id, label: group.name }))}
+                onValueChange={setGroupId}
+              >
                 <SelectTrigger className="w-full" data-testid="nav-card-group">
                   <SelectValue />
                 </SelectTrigger>
@@ -421,6 +566,7 @@ const NavigationPage = () => {
   const { state, isLoading, isError, refetch, save, isSaving } = useNavConfig();
 
   const [query, setQuery] = useState("");
+  const [engineId, setEngineIdState] = useState<SearchEngineId>(() => readPreferredEngine());
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
@@ -429,10 +575,24 @@ const NavigationPage = () => {
   const [cardDialog, setCardDialog] = useState<CardDialogState | null>(null);
   const [nameDialog, setNameDialog] = useState<NameDialogState | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
+  const [openAllConfirm, setOpenAllConfirm] = useState<{ group: NavGroup; count: number } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const cardRefs = useRef<Map<string, HTMLAnchorElement>>(new Map());
   const cardDragRef = useRef<CardDrag | null>(null);
   const groupDragRef = useRef<string | null>(null);
+
+  const setEngineId = useCallback((id: SearchEngineId) => {
+    setEngineIdState(id);
+    writePreferredEngine(id);
+  }, []);
+
+  const openWebSearch = useCallback(() => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    const url = buildSearchUrl(getSearchEngine(engineId), trimmed);
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  }, [query, engineId]);
 
   const config = state?.config ?? null;
   const filtered = useMemo(() => (config ? searchNavConfig(config, query) : null), [config, query]);
@@ -441,12 +601,49 @@ const NavigationPage = () => {
   const canDrag = config !== null && !isSearching;
 
   const persist = useCallback(
-    (next: NavConfig) => {
+    async (next: NavConfig) => {
       if (!state || next === state.config) return;
-      void save(next).catch(() => toast.error(t.saveFailed));
+      await save(next);
     },
-    [save, state, t.saveFailed],
+    [save, state],
   );
+
+  /** Fire-and-forget persist for small edits; surfaces the offline toast. */
+  const persistQuiet = useCallback(
+    (next: NavConfig) => {
+      void persist(next).catch(() => toast.error(t.saveFailed));
+    },
+    [persist, t.saveFailed],
+  );
+
+  const hasExpandedGroup = useMemo(() => (config ? config.groups.some((group) => !group.collapsed) : false), [config]);
+  const allGroupsCollapsed = useMemo(
+    () => (config ? config.groups.length > 0 && config.groups.every((group) => group.collapsed) : false),
+    [config],
+  );
+
+  /** One-click: collapse every open group; if all are already closed, expand them. */
+  const toggleCollapseAll = () => {
+    if (!state || isSearching) return;
+    persistQuiet(setAllGroupsCollapsed(state.config, hasExpandedGroup));
+  };
+
+  const runOpenAll = async (group: NavGroup) => {
+    const urls = collectGroupUrls(group.items);
+    if (urls.length === 0) return;
+    const result = await openUrlsInTabs(urls);
+    if (result.opened > 0) toast.success(t.openAllLinksOpened(result.opened));
+    if (result.blocked > 0) toast.error(t.openAllLinksBlocked(result.blocked));
+  };
+
+  const requestOpenAll = (group: NavGroup) => {
+    if (group.items.length === 0) return;
+    if (group.items.length > OPEN_ALL_CONFIRM_THRESHOLD) {
+      setOpenAllConfirm({ group, count: Math.min(group.items.length, 40) });
+      return;
+    }
+    void runOpenAll(group);
+  };
 
   const moveFocus = useCallback(
     (delta: number) => {
@@ -493,6 +690,17 @@ const NavigationPage = () => {
   };
 
   const handleSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Tab") {
+      // Tab cycles Google → Bing → 百度 while the spotlight is focused.
+      event.preventDefault();
+      setEngineId(cycleSearchEngine(engineId, event.shiftKey ? -1 : 1).id);
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      openWebSearch();
+      return;
+    }
     if (event.key === "ArrowDown") {
       event.preventDefault();
       moveFocus(1);
@@ -535,7 +743,7 @@ const NavigationPage = () => {
       ...state.config,
       groups: state.config.groups.map((g) => (g.id === group.id ? { ...g, collapsed: !g.collapsed } : g)),
     };
-    persist(next);
+    persistQuiet(next);
   };
 
   const endDrag = () => {
@@ -573,7 +781,7 @@ const NavigationPage = () => {
       return;
     }
     const next = moveCard(state.config, drag.cardId, cardDropHint.groupId, cardDropHint.index);
-    persist(next);
+    persistQuiet(next);
     endDrag();
   };
 
@@ -605,7 +813,7 @@ const NavigationPage = () => {
       return;
     }
     const next = moveGroup(state.config, groupId, groupDropHint);
-    persist(next);
+    persistQuiet(next);
     endDrag();
   };
 
@@ -636,24 +844,21 @@ const NavigationPage = () => {
     });
   }, []);
 
-  const recordBinaryClip = useCallback(
-    async (blob: Blob, fileName?: string) => {
-      const now = Date.now();
-      const current = clipsRef.current;
-      let next: NavClipItem[] = current;
-      if (blob.type.startsWith("image/")) {
-        next = await addImageClip(blob, now, current);
-      } else {
-        const file =
-          blob instanceof File ? blob : new File([blob], fileName || "clipboard", { type: blob.type || "application/octet-stream" });
-        next = await addFileClip(file, now, current);
-      }
-      clipsRef.current = next;
-      setClips(next);
-      writeClips(next);
-    },
-    [],
-  );
+  const recordBinaryClip = useCallback(async (blob: Blob, fileName?: string) => {
+    const now = Date.now();
+    const current = clipsRef.current;
+    let next: NavClipItem[] = current;
+    if (blob.type.startsWith("image/")) {
+      next = await addImageClip(blob, now, current);
+    } else {
+      const file =
+        blob instanceof File ? blob : new File([blob], fileName || "clipboard", { type: blob.type || "application/octet-stream" });
+      next = await addFileClip(file, now, current);
+    }
+    clipsRef.current = next;
+    setClips(next);
+    writeClips(next);
+  }, []);
 
   /**
    * Pull text + images + mixed HTML from the system clipboard when the panel opens.
@@ -870,7 +1075,7 @@ const NavigationPage = () => {
       cardDialog.mode === "create"
         ? addCard(state.config, targetGroupId, createCard(draft))
         : updateCard(state.config, cardDialog.cardId ?? "", draft);
-    persist(next);
+    persistQuiet(next);
     setCardDialog(null);
   };
 
@@ -888,7 +1093,7 @@ const NavigationPage = () => {
     if (!trimmed) return;
     const next =
       nameDialog.mode === "create" ? addGroup(state.config, trimmed) : renameGroup(state.config, nameDialog.groupId ?? "", trimmed);
-    persist(next);
+    persistQuiet(next);
     setNameDialog(null);
   };
 
@@ -906,11 +1111,46 @@ const NavigationPage = () => {
       confirmDialog.kind === "card"
         ? removeCard(state.config, confirmDialog.cardId ?? "")
         : removeGroup(state.config, confirmDialog.groupId);
-    persist(next);
+    persistQuiet(next);
     setConfirmDialog(null);
   };
 
   const isDegraded = state?.source === "cache";
+
+  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    // Reset so choosing the same file twice still fires change.
+    event.target.value = "";
+    if (!file || !state) return;
+    try {
+      const text = await file.text();
+      const folders = parseBookmarkHtml(text);
+      if (folders.length === 0) {
+        toast.error(t.importEmpty);
+        return;
+      }
+      const result = importBookmarkFolders(state.config, folders);
+      if (result.addedCards === 0) {
+        toast(t.importNoNew);
+        return;
+      }
+      // Refuse up-front when the config memo would exceed the server content cap.
+      const size = buildConfigContent(result.config).length;
+      if (size > NAV_CONFIG_CONTENT_LIMIT) {
+        toast.error(t.importTooLarge(size, NAV_CONFIG_CONTENT_LIMIT));
+        return;
+      }
+      await persist(result.config);
+      toast.success(t.importSuccess(result.addedCards, result.addedGroups, result.skippedDuplicates));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message.includes("content too long") || message.includes("invalid_argument")) {
+        toast.error(t.importTooLarge(0, NAV_CONFIG_CONTENT_LIMIT));
+      } else {
+        toast.error(t.saveFailed);
+      }
+    }
+  };
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -939,7 +1179,34 @@ const NavigationPage = () => {
                 </span>
               ) : null}
               <div role="search" className="nav-spotlight relative min-w-0 flex-1">
-                <SearchIcon className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" strokeWidth={2} />
+                <div
+                  className="nav-engine-tabs absolute left-2 top-1/2 z-10 flex -translate-y-1/2 items-center gap-0.5"
+                  data-testid="nav-engine-tabs"
+                  role="group"
+                  aria-label="搜索引擎"
+                >
+                  {SEARCH_ENGINES.map((engine) => (
+                    <Tooltip key={engine.id}>
+                      <TooltipTrigger
+                        render={
+                          <button
+                            type="button"
+                            data-testid={`nav-engine-${engine.id}`}
+                            data-active={engine.id === engineId ? "true" : undefined}
+                            aria-label={engine.label}
+                            aria-pressed={engine.id === engineId}
+                            className="nav-engine-chip"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => setEngineId(engine.id)}
+                          />
+                        }
+                      >
+                        {engine.shortLabel}
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">{engine.label}</TooltipContent>
+                    </Tooltip>
+                  ))}
+                </div>
                 <Input
                   ref={searchRef}
                   value={query}
@@ -948,7 +1215,7 @@ const NavigationPage = () => {
                   onKeyDown={handleSearchKeyDown}
                   placeholder={t.searchPlaceholder}
                   aria-label={t.searchPlaceholder}
-                  className="nav-spotlight-input h-12 rounded-full pr-10 pl-12 text-base"
+                  className="nav-spotlight-input h-12 rounded-full pr-10 pl-28 text-base"
                   data-testid="nav-search-input"
                 />
                 {query ? (
@@ -967,6 +1234,27 @@ const NavigationPage = () => {
                   render={
                     <button
                       type="button"
+                      aria-label={hasExpandedGroup ? t.collapseAll : t.expandAll}
+                      data-testid="nav-toggle-collapse-all"
+                      disabled={isSearching || !config || config.groups.length === 0}
+                      onClick={toggleCollapseAll}
+                      className="nav-spotlight-action flex size-12 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                    />
+                  }
+                >
+                  {allGroupsCollapsed ? (
+                    <ChevronsUpDownIcon className="size-5" strokeWidth={1.8} />
+                  ) : (
+                    <ChevronsDownUpIcon className="size-5" strokeWidth={1.8} />
+                  )}
+                </TooltipTrigger>
+                <TooltipContent side="bottom">{hasExpandedGroup ? t.collapseAll : t.expandAll}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
                       aria-label={t.addGroup}
                       data-testid="nav-add-group"
                       onClick={openCreateGroup}
@@ -977,6 +1265,31 @@ const NavigationPage = () => {
                   <PlusIcon className="size-5" strokeWidth={1.8} />
                 </TooltipTrigger>
                 <TooltipContent side="bottom">{t.addGroup}</TooltipContent>
+              </Tooltip>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".html,.htm,text/html"
+                className="hidden"
+                data-testid="nav-import-input"
+                onChange={(event) => void handleImportFile(event)}
+              />
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      aria-label={t.importBookmarks}
+                      title={t.importBookmarksHint}
+                      data-testid="nav-import-button"
+                      onClick={() => importInputRef.current?.click()}
+                      className="nav-spotlight-action flex size-12 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    />
+                  }
+                >
+                  <UploadIcon className="size-5" strokeWidth={1.8} />
+                </TooltipTrigger>
+                <TooltipContent side="bottom">{t.importBookmarks}</TooltipContent>
               </Tooltip>
               <Popover
                 open={clipboardOpen}
@@ -1125,6 +1438,19 @@ const NavigationPage = () => {
                       variant="ghost"
                       size="icon"
                       className="size-7"
+                      aria-label={t.openAllLinks}
+                      title={t.openAllLinks}
+                      data-testid="nav-open-all"
+                      disabled={group.items.length === 0}
+                      onClick={() => requestOpenAll(group)}
+                    >
+                      <SquareArrowOutUpRightIcon className="size-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-7"
                       aria-label={t.addCard}
                       data-testid="nav-add-card"
                       onClick={() => openCreateCard(group.id)}
@@ -1205,6 +1531,33 @@ const NavigationPage = () => {
       {nameDialog ? <NameDialog state={nameDialog} onClose={() => setNameDialog(null)} onSubmit={handleNameSubmit} /> : null}
       {confirmDialog ? (
         <ConfirmDialog state={confirmDialog} onClose={() => setConfirmDialog(null)} onConfirm={handleConfirmDelete} />
+      ) : null}
+      {openAllConfirm ? (
+        <Dialog open onOpenChange={(open) => (open ? undefined : setOpenAllConfirm(null))}>
+          <DialogContent size="sm" data-testid="nav-open-all-dialog">
+            <DialogHeader>
+              <DialogTitle>{t.openAllLinksTitle}</DialogTitle>
+              <DialogDescription>{t.openAllLinksConfirm(openAllConfirm.count)}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button type="button" variant="outline" size="sm" onClick={() => setOpenAllConfirm(null)}>
+                {t.cancel}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                data-testid="nav-open-all-confirm"
+                onClick={() => {
+                  const group = openAllConfirm.group;
+                  setOpenAllConfirm(null);
+                  void runOpenAll(group);
+                }}
+              >
+                {t.confirm}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       ) : null}
     </div>
   );

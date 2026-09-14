@@ -145,6 +145,54 @@ describe("NavigationPage search and keyboard interaction", () => {
     expect(screen.getByText("Memos")).toBeInTheDocument();
   });
 
+  it("cycles search engines with Tab and opens web search on Enter", async () => {
+    const open = vi.fn();
+    const originalOpen = window.open;
+    window.open = open as unknown as typeof window.open;
+    try {
+      renderPage();
+      await screen.findAllByTestId("nav-card");
+
+      expect(screen.getByTestId("nav-engine-google")).toHaveAttribute("data-active", "true");
+
+      fireEvent.keyDown(searchInput(), { key: "Tab" });
+      expect(screen.getByTestId("nav-engine-bing")).toHaveAttribute("data-active", "true");
+
+      fireEvent.keyDown(searchInput(), { key: "Tab" });
+      expect(screen.getByTestId("nav-engine-baidu")).toHaveAttribute("data-active", "true");
+
+      fireEvent.keyDown(searchInput(), { key: "Tab" });
+      expect(screen.getByTestId("nav-engine-google")).toHaveAttribute("data-active", "true");
+
+      fireEvent.change(searchInput(), { target: { value: "memos notes" } });
+      fireEvent.keyDown(searchInput(), { key: "Enter" });
+
+      expect(open).toHaveBeenCalledWith("https://www.google.com/search?q=memos%20notes", "_blank", "noopener,noreferrer");
+    } finally {
+      window.open = originalOpen;
+    }
+  });
+
+  it("switches engine on chip click without stealing focus", async () => {
+    renderPage();
+    await screen.findAllByTestId("nav-card");
+    searchInput().focus();
+
+    fireEvent.mouseDown(screen.getByTestId("nav-engine-baidu"), { button: 0 });
+    fireEvent.click(screen.getByTestId("nav-engine-baidu"));
+
+    expect(screen.getByTestId("nav-engine-baidu")).toHaveAttribute("data-active", "true");
+    expect(document.activeElement).toBe(searchInput());
+  });
+
+  it("renders a site logo on each card", async () => {
+    renderPage();
+    const cards = await screen.findAllByTestId("nav-card");
+    expect(cards.length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId("nav-card-logo").length).toBe(cards.length);
+    expect(screen.getAllByTestId("nav-card-logo")[0]).toHaveAttribute("src", "https://usememos.com/favicon.ico");
+  });
+
   it("clears the roving highlight when focus leaves the card list", async () => {
     renderPage();
     const card = await screen.findByText("Memos");
@@ -164,19 +212,66 @@ describe("NavigationPage group disclosure", () => {
     renderPage();
     await screen.findAllByTestId("nav-card");
 
-    const toggle = screen.getAllByRole("button", { name: /Collapse/ })[0];
+    const group = screen.getAllByTestId("nav-group")[0];
+    const toggle = within(group)
+      .getAllByRole("button")
+      .find((btn) => btn.hasAttribute("aria-expanded"));
+    expect(toggle).toBeTruthy();
     expect(toggle).toHaveAttribute("aria-expanded", "true");
 
-    fireEvent.click(toggle);
+    fireEvent.click(toggle!);
     await waitFor(() => {
-      const updated = screen.getAllByRole("button", { name: /Expand/ })[0];
-      expect(updated).toHaveAttribute("aria-expanded", "false");
+      expect(
+        within(group)
+          .getAllByRole("button")
+          .find((btn) => btn.hasAttribute("aria-expanded")),
+      ).toHaveAttribute("aria-expanded", "false");
     });
   });
 });
 
 describe("NavigationPage editor", () => {
   beforeEach(seedFirstVisit);
+
+  it("collapses all groups with one click and expands them again", async () => {
+    renderPage();
+    await screen.findAllByTestId("nav-card");
+
+    const toggle = screen.getByTestId("nav-toggle-collapse-all");
+    expect(toggle).toHaveAccessibleName("Collapse all");
+
+    fireEvent.click(toggle);
+    await waitFor(() => {
+      expect(screen.getAllByRole("button", { name: /Expand/ }).length).toBeGreaterThan(0);
+      expect(screen.queryAllByTestId("nav-card")).toHaveLength(0);
+    });
+    expect(screen.getByTestId("nav-toggle-collapse-all")).toHaveAccessibleName("Expand all");
+
+    fireEvent.click(screen.getByTestId("nav-toggle-collapse-all"));
+    await waitFor(() => {
+      expect(screen.getAllByTestId("nav-card").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("opens every link in a small group in a new tab", async () => {
+    const open = vi.fn(() => ({ closed: false }));
+    const original = window.open;
+    window.open = open as unknown as typeof window.open;
+    try {
+      renderPage();
+      await screen.findAllByTestId("nav-card");
+
+      // Seed "开发" has a single card (MDN).
+      fireEvent.click(screen.getAllByTestId("nav-open-all")[1]);
+
+      await waitFor(() => {
+        expect(open).toHaveBeenCalledWith("https://developer.mozilla.org", "_blank", "noopener,noreferrer");
+      });
+      expect(screen.queryByTestId("nav-open-all-dialog")).not.toBeInTheDocument();
+    } finally {
+      window.open = original;
+    }
+  });
 
   it("adds a card through the create dialog", async () => {
     renderPage();

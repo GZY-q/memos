@@ -29,7 +29,9 @@ import { extractConfigPayload } from "./validate";
 const CONFIG_MEMO_PAGE_SIZE = 50;
 
 export const buildConfigContent = (config: NavConfig): string => {
-  const json = JSON.stringify(config, null, 2);
+  // Compact JSON: pretty-printing alone can push a large import over the
+  // server's memo content limit (default 8192 characters).
+  const json = JSON.stringify(config);
   return `${NAV_CONFIG_MARKER}\n\`\`\`json\n${json}\n\`\`\``;
 };
 
