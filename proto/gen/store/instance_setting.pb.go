@@ -160,6 +160,8 @@ const (
 	AIProviderType_GEMINI                       AIProviderType = 2
 	// VOLCENGINE_ARK is Volcengine Ark Agent Plan speech APIs (seed-tts / seed-asr).
 	AIProviderType_VOLCENGINE_ARK AIProviderType = 3
+	// EDGE is the keyless Microsoft Edge read-aloud voice service (server-proxied).
+	AIProviderType_EDGE AIProviderType = 4
 )
 
 // Enum value maps for AIProviderType.
@@ -169,12 +171,14 @@ var (
 		1: "OPENAI",
 		2: "GEMINI",
 		3: "VOLCENGINE_ARK",
+		4: "EDGE",
 	}
 	AIProviderType_value = map[string]int32{
 		"AI_PROVIDER_TYPE_UNSPECIFIED": 0,
 		"OPENAI":                       1,
 		"GEMINI":                       2,
 		"VOLCENGINE_ARK":               3,
+		"EDGE":                         4,
 	}
 )
 
@@ -1799,14 +1803,15 @@ const file_store_instance_setting_proto_rawDesc = "" +
 	"\x18STORAGE_TYPE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15STORAGE_TYPE_DATABASE\x10\x01\x12\x16\n" +
 	"\x12STORAGE_TYPE_LOCAL\x10\x02\x12\x13\n" +
-	"\x0fSTORAGE_TYPE_S3\x10\x03*^\n" +
+	"\x0fSTORAGE_TYPE_S3\x10\x03*h\n" +
 	"\x0eAIProviderType\x12 \n" +
 	"\x1cAI_PROVIDER_TYPE_UNSPECIFIED\x10\x00\x12\n" +
 	"\n" +
 	"\x06OPENAI\x10\x01\x12\n" +
 	"\n" +
 	"\x06GEMINI\x10\x02\x12\x12\n" +
-	"\x0eVOLCENGINE_ARK\x10\x03*}\n" +
+	"\x0eVOLCENGINE_ARK\x10\x03\x12\b\n" +
+	"\x04EDGE\x10\x04*}\n" +
 	"\x12InstanceAccessMode\x12$\n" +
 	" INSTANCE_ACCESS_MODE_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cINSTANCE_ACCESS_MODE_PRIVATE\x10\x01\x12\x1f\n" +

@@ -99,7 +99,7 @@ func (s *APIV1Service) prepareInstanceAISettingForUpdate(ctx context.Context, se
 		if provider.Title == "" {
 			return errors.New("provider title is required")
 		}
-		if provider.Type != storepb.AIProviderType_OPENAI && provider.Type != storepb.AIProviderType_GEMINI && provider.Type != storepb.AIProviderType_VOLCENGINE_ARK {
+		if provider.Type != storepb.AIProviderType_OPENAI && provider.Type != storepb.AIProviderType_GEMINI && provider.Type != storepb.AIProviderType_VOLCENGINE_ARK && provider.Type != storepb.AIProviderType_EDGE {
 			return errors.Errorf("provider %q has unsupported type", provider.Id)
 		}
 
@@ -114,13 +114,16 @@ func (s *APIV1Service) prepareInstanceAISettingForUpdate(ctx context.Context, se
 			provider.Endpoint = "https://openspeech.bytedance.com/api/v3/plan"
 		}
 
-		if provider.ApiKey == "" {
-			if existingProvider, ok := existingProviders[provider.Id]; ok {
-				provider.ApiKey = existingProvider.ApiKey
+		// Edge read-aloud is keyless; API key and endpoint are unused.
+		if provider.Type != storepb.AIProviderType_EDGE {
+			if provider.ApiKey == "" {
+				if existingProvider, ok := existingProviders[provider.Id]; ok {
+					provider.ApiKey = existingProvider.ApiKey
+				}
 			}
-		}
-		if provider.ApiKey == "" {
-			return errors.Errorf("provider %q API key is required", provider.Id)
+			if provider.ApiKey == "" {
+				return errors.Errorf("provider %q API key is required", provider.Id)
+			}
 		}
 	}
 

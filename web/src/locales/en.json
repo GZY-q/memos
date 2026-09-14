@@ -651,6 +651,7 @@
       "delete-provider": "Delete AI provider `{{title}}`?",
       "description": "Provider keys are supplied by the instance owner and used by server-side AI features.",
       "dialog-description": "Add a key from your own provider account. Memos uses built-in models for each provider; leave the API key blank while editing to keep the stored key.",
+      "edge-keyless-note": "Microsoft Edge read-aloud is keyless. No API key or endpoint is required; Memos proxies synthesis from this server.",
       "edit-provider": "Edit provider",
       "endpoint": "Endpoint",
       "endpoint-hint": "Leave empty to use the official provider endpoint.",
@@ -685,6 +686,7 @@
       "tts-model": "Model / resource id",
       "tts-no-provider": "None — text-to-speech disabled",
       "tts-provider": "Provider",
+      "tts-speaker-edge-help": "Microsoft Edge neural voice used when reading memos aloud.",
       "tts-speaker-help": "Volcengine Ark voice id, e.g. zh_female_vv_uranus_bigtts.",
       "tts-speaker": "Speaker",
       "tts-title": "Text to speech"

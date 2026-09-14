@@ -212,6 +212,8 @@ enum AIProviderType {
   GEMINI = 2;
   // VOLCENGINE_ARK is Volcengine Ark Agent Plan speech APIs (seed-tts / seed-asr).
   VOLCENGINE_ARK = 3;
+  // EDGE is the keyless Microsoft Edge read-aloud voice service (server-proxied).
+  EDGE = 4;
 }
 
 // TranscriptionConfig configures the speech-to-text feature.

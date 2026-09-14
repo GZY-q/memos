@@ -11,6 +11,8 @@ const (
 	DefaultArkTTSModel = "seed-tts-2.0"
 	// DefaultArkTTSSpeaker is the default Volcengine Ark TTS voice.
 	DefaultArkTTSSpeaker = "zh_female_vv_uranus_bigtts"
+	// DefaultEdgeTTSSpeaker is the default Microsoft Edge neural voice.
+	DefaultEdgeTTSSpeaker = "zh-CN-XiaoxiaoNeural"
 )
 
 // DefaultTranscriptionModel returns the built-in transcription model for a provider.
@@ -30,6 +32,9 @@ func DefaultTTSModel(providerType ProviderType) (string, error) {
 	switch providerType {
 	case ProviderVolcengineArk:
 		return DefaultArkTTSModel, nil
+	case ProviderEdge:
+		// Edge read-aloud has no model / resource id concept.
+		return "", nil
 	default:
 		return "", errors.Wrapf(ErrCapabilityUnsupported, "provider type %q", providerType)
 	}
@@ -40,6 +45,8 @@ func DefaultTTSSpeaker(providerType ProviderType) (string, error) {
 	switch providerType {
 	case ProviderVolcengineArk:
 		return DefaultArkTTSSpeaker, nil
+	case ProviderEdge:
+		return DefaultEdgeTTSSpeaker, nil
 	default:
 		return "", errors.Wrapf(ErrCapabilityUnsupported, "provider type %q", providerType)
 	}

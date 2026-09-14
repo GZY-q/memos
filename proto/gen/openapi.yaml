@@ -3456,6 +3456,7 @@ components:
                         - OPENAI
                         - GEMINI
                         - VOLCENGINE_ARK
+                        - EDGE
                     type: string
                     format: enum
                 endpoint:

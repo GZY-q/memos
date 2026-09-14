@@ -10,6 +10,8 @@ const (
 	ProviderGemini ProviderType = "GEMINI"
 	// ProviderVolcengineArk is Volcengine Ark Agent Plan speech APIs.
 	ProviderVolcengineArk ProviderType = "VOLCENGINE_ARK"
+	// ProviderEdge is the keyless Microsoft Edge read-aloud voice service.
+	ProviderEdge ProviderType = "EDGE"
 )
 
 // ProviderConfig configures a callable AI provider connection.

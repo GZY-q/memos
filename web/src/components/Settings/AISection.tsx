@@ -25,6 +25,7 @@ import {
   InstanceSetting_TTSConfigSchema,
   InstanceSettingSchema,
 } from "@/types/proto/api/v1/instance_service_pb";
+import { DEFAULT_EDGE_VOICE, EDGE_VOICES } from "@/utils/edge-voices";
 import { useTranslate } from "@/utils/i18n";
 import SettingGroup from "./SettingGroup";
 import { SettingPanel } from "./SettingList";
@@ -59,7 +60,10 @@ const providerTypeOptions = [
   InstanceSetting_AIProviderType.OPENAI,
   InstanceSetting_AIProviderType.GEMINI,
   InstanceSetting_AIProviderType.VOLCENGINE_ARK,
+  InstanceSetting_AIProviderType.EDGE,
 ];
+
+const isKeylessProviderType = (type: InstanceSetting_AIProviderType) => type === InstanceSetting_AIProviderType.EDGE;
 
 const byokNotes = ["setting.ai.byok-key-note", "setting.ai.byok-storage-note", "setting.ai.byok-model-note"] as const;
 
@@ -217,7 +221,7 @@ const AISection = () => {
       toast.error(t("setting.ai.provider-title-required"));
       return;
     }
-    if (!provider.apiKeySet && !provider.apiKey.trim()) {
+    if (!isKeylessProviderType(provider.type) && !provider.apiKeySet && !provider.apiKey.trim()) {
       toast.error(t("setting.ai.api-key-required"));
       return;
     }
@@ -535,6 +539,8 @@ const AIProviderDialog = ({ provider, onOpenChange, onSave }: AIProviderDialogPr
     onSave(draft);
   };
 
+  const keyless = isKeylessProviderType(draft.type);
+
   return (
     <Dialog open={!!provider} onOpenChange={onOpenChange}>
       <DialogContent size="2xl">
@@ -569,28 +575,37 @@ const AIProviderDialog = ({ provider, onOpenChange, onSave }: AIProviderDialogPr
             </Select>
           </div>
 
-          <div className="flex flex-col gap-1.5 sm:col-span-2">
-            <Label>{t("setting.ai.endpoint")}</Label>
-            <Input
-              value={draft.endpoint}
-              onChange={(e) => updateDraft({ endpoint: e.target.value })}
-              placeholder={getDefaultEndpointPlaceholder(draft.type)}
-            />
-            <p className="text-xs text-muted-foreground">{t("setting.ai.endpoint-hint")}</p>
-          </div>
+          {!keyless && (
+            <>
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <Label>{t("setting.ai.endpoint")}</Label>
+                <Input
+                  value={draft.endpoint}
+                  onChange={(e) => updateDraft({ endpoint: e.target.value })}
+                  placeholder={getDefaultEndpointPlaceholder(draft.type)}
+                />
+                <p className="text-xs text-muted-foreground">{t("setting.ai.endpoint-hint")}</p>
+              </div>
 
-          <div className="flex flex-col gap-1.5 sm:col-span-2">
-            <Label>{t("setting.ai.api-key")}</Label>
-            <Input
-              type="password"
-              value={draft.apiKey}
-              onChange={(e) => updateDraft({ apiKey: e.target.value })}
-              placeholder={draft.apiKeySet ? t("setting.ai.keep-api-key") : ""}
-            />
-            {draft.apiKeySet && (
-              <p className="text-xs text-muted-foreground">{t("setting.ai.current-key", { key: draft.apiKeyHint || "-" })}</p>
-            )}
-          </div>
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <Label>{t("setting.ai.api-key")}</Label>
+                <Input
+                  type="password"
+                  value={draft.apiKey}
+                  onChange={(e) => updateDraft({ apiKey: e.target.value })}
+                  placeholder={draft.apiKeySet ? t("setting.ai.keep-api-key") : ""}
+                />
+                {draft.apiKeySet && (
+                  <p className="text-xs text-muted-foreground">{t("setting.ai.current-key", { key: draft.apiKeyHint || "-" })}</p>
+                )}
+              </div>
+            </>
+          )}
+          {keyless && (
+            <div className="sm:col-span-2">
+              <p className="text-xs text-muted-foreground">{t("setting.ai.edge-keyless-note")}</p>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -627,6 +642,7 @@ interface TTSFormProps {
 const TTSForm = ({ providers, tts, referencedProvider, onChange }: TTSFormProps) => {
   const t = useTranslate();
   const noProviders = providers.length === 0;
+  const isEdgeProvider = referencedProvider?.type === InstanceSetting_AIProviderType.EDGE;
 
   const providerOptions = useMemo(
     () => [
@@ -636,20 +652,27 @@ const TTSForm = ({ providers, tts, referencedProvider, onChange }: TTSFormProps)
     [providers, t],
   );
 
+  const edgeVoiceOptions = useMemo(() => EDGE_VOICES.map((voice) => ({ value: voice.shortName, label: voice.label })), []);
+
   const update = (partial: Partial<LocalTTS>) => {
     onChange({ ...tts, ...partial });
+  };
+
+  const handleProviderChange = (value: string) => {
+    const providerId = value === "__none__" ? "" : value;
+    const provider = providers.find((item) => item.id === providerId);
+    if (provider?.type === InstanceSetting_AIProviderType.EDGE) {
+      update({ providerId, model: "", speaker: tts.speaker || DEFAULT_EDGE_VOICE });
+      return;
+    }
+    update({ providerId });
   };
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl">
       <div className="flex flex-col gap-1.5 sm:col-span-2">
         <Label>{t("setting.ai.tts-provider")}</Label>
-        <Select
-          value={tts.providerId || "__none__"}
-          items={providerOptions}
-          onValueChange={(value) => update({ providerId: value === "__none__" ? "" : value })}
-          disabled={noProviders}
-        >
+        <Select value={tts.providerId || "__none__"} items={providerOptions} onValueChange={handleProviderChange} disabled={noProviders}>
           <SelectTrigger className="w-full">
             <SelectValue />
           </SelectTrigger>
@@ -662,34 +685,58 @@ const TTSForm = ({ providers, tts, referencedProvider, onChange }: TTSFormProps)
           </SelectContent>
         </Select>
         {noProviders && <p className="text-xs text-muted-foreground">{t("setting.ai.tts-empty-providers")}</p>}
-        {referencedProvider && !referencedProvider.apiKeySet && (
+        {referencedProvider && !isEdgeProvider && !referencedProvider.apiKeySet && (
           <p className="text-xs text-destructive">{t("setting.ai.transcription-warning-no-key")}</p>
         )}
       </div>
 
       <div className="flex flex-col gap-1.5">
         <Label>{t("setting.ai.tts-speaker")}</Label>
-        <Input
-          value={tts.speaker}
-          onChange={(e) => update({ speaker: e.target.value })}
-          placeholder="zh_female_vv_uranus_bigtts"
-          disabled={!tts.providerId}
-          maxLength={128}
-        />
-        <p className="text-xs text-muted-foreground">{t("setting.ai.tts-speaker-help")}</p>
+        {isEdgeProvider ? (
+          <Select
+            value={tts.speaker || DEFAULT_EDGE_VOICE}
+            items={edgeVoiceOptions}
+            onValueChange={(value) => update({ speaker: value })}
+            disabled={!tts.providerId}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {edgeVoiceOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Input
+            value={tts.speaker}
+            onChange={(e) => update({ speaker: e.target.value })}
+            placeholder="zh_female_vv_uranus_bigtts"
+            disabled={!tts.providerId}
+            maxLength={128}
+          />
+        )}
+        <p className="text-xs text-muted-foreground">
+          {isEdgeProvider ? t("setting.ai.tts-speaker-edge-help") : t("setting.ai.tts-speaker-help")}
+        </p>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label>{t("setting.ai.tts-model")}</Label>
-        <Input
-          value={tts.model}
-          onChange={(e) => update({ model: e.target.value })}
-          placeholder="seed-tts-2.0"
-          disabled={!tts.providerId}
-          maxLength={128}
-        />
-        <p className="text-xs text-muted-foreground">{t("setting.ai.tts-model-help")}</p>
-      </div>
+      {!isEdgeProvider && (
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("setting.ai.tts-model")}</Label>
+          <Input
+            value={tts.model}
+            onChange={(e) => update({ model: e.target.value })}
+            placeholder="seed-tts-2.0"
+            disabled={!tts.providerId}
+            maxLength={128}
+          />
+          <p className="text-xs text-muted-foreground">{t("setting.ai.tts-model-help")}</p>
+        </div>
+      )}
     </div>
   );
 };

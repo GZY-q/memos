@@ -18,6 +18,7 @@ import (
 	sttopenai "github.com/usememos/memos/internal/ai/stt/openai"
 	"github.com/usememos/memos/internal/ai/tts"
 	ttsark "github.com/usememos/memos/internal/ai/tts/ark"
+	ttsedge "github.com/usememos/memos/internal/ai/tts/edge"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 	storepb "github.com/usememos/memos/proto/gen/store"
 )
@@ -183,6 +184,11 @@ func (s *APIV1Service) Synthesize(ctx context.Context, request *v1pb.SynthesizeR
 			Speaker: speaker,
 			Model:   model,
 		})
+	case ai.ProviderEdge:
+		audio, contentType, err = s.synthesizeViaEdge(ctx, provider, tts.Request{
+			Text:    text,
+			Speaker: speaker,
+		})
 	default:
 		return nil, status.Errorf(codes.FailedPrecondition,
 			"provider type %q is not supported for text-to-speech", provider.Type)
@@ -204,6 +210,22 @@ func (*APIV1Service) synthesizeViaArk(
 	synthesizer, err := ttsark.New(provider, tts.ApplyOptions(nil))
 	if err != nil {
 		return nil, "", errors.Wrap(err, "failed to create Ark TTS synthesizer")
+	}
+	resp, err := synthesizer.Synthesize(ctx, req)
+	if err != nil {
+		return nil, "", err
+	}
+	return resp.Audio, resp.ContentType, nil
+}
+
+func (*APIV1Service) synthesizeViaEdge(
+	ctx context.Context,
+	provider ai.ProviderConfig,
+	req tts.Request,
+) ([]byte, string, error) {
+	synthesizer, err := ttsedge.New(provider, tts.ApplyOptions(nil))
+	if err != nil {
+		return nil, "", errors.Wrap(err, "failed to create Edge TTS synthesizer")
 	}
 	resp, err := synthesizer.Synthesize(ctx, req)
 	if err != nil {
@@ -319,6 +341,8 @@ func convertAIProviderTypeFromStore(providerType storepb.AIProviderType) ai.Prov
 		return ai.ProviderGemini
 	case storepb.AIProviderType_VOLCENGINE_ARK:
 		return ai.ProviderVolcengineArk
+	case storepb.AIProviderType_EDGE:
+		return ai.ProviderEdge
 	default:
 		return ""
 	}

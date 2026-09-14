@@ -511,6 +511,7 @@
       "description": "Provider key 由实例所有者提供，并用于服务端 AI 功能。",
       "dialog-description": "添加你自己的 provider 账号 key。Memos 会为每个 provider 使用内置模型；编辑时留空 API key 可保留已保存的 key。",
       "edit-provider": "编辑 provider",
+      "edge-keyless-note": "Microsoft Edge 朗读服务无需 API key，也不需要 endpoint；Memos 会从本实例服务器代理合成。",
       "endpoint": "端点",
       "endpoint-hint": "留空则使用官方 provider 端点。",
       "keep-api-key": "留空以保留已保存的 key",
@@ -544,6 +545,7 @@
       "tts-model": "模型 / 资源 ID",
       "tts-no-provider": "无 — 文本转语音已禁用",
       "tts-provider": "供应商",
+      "tts-speaker-edge-help": "朗读备忘录时使用的 Microsoft Edge 神经音色。",
       "tts-speaker-help": "火山方舟音色 ID，例如 zh_female_vv_uranus_bigtts。",
       "tts-speaker": "音色",
       "tts-title": "文本转语音"
