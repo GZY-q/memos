@@ -99,7 +99,7 @@ func (s *APIV1Service) prepareInstanceAISettingForUpdate(ctx context.Context, se
 		if provider.Title == "" {
 			return errors.New("provider title is required")
 		}
-		if provider.Type != storepb.AIProviderType_OPENAI && provider.Type != storepb.AIProviderType_GEMINI {
+		if provider.Type != storepb.AIProviderType_OPENAI && provider.Type != storepb.AIProviderType_GEMINI && provider.Type != storepb.AIProviderType_VOLCENGINE_ARK {
 			return errors.Errorf("provider %q has unsupported type", provider.Id)
 		}
 
@@ -109,6 +109,9 @@ func (s *APIV1Service) prepareInstanceAISettingForUpdate(ctx context.Context, se
 		}
 		if provider.Type == storepb.AIProviderType_GEMINI && provider.Endpoint == "" {
 			provider.Endpoint = "https://generativelanguage.googleapis.com/v1beta"
+		}
+		if provider.Type == storepb.AIProviderType_VOLCENGINE_ARK && provider.Endpoint == "" {
+			provider.Endpoint = "https://openspeech.bytedance.com/api/v3/plan"
 		}
 
 		if provider.ApiKey == "" {
@@ -122,6 +125,9 @@ func (s *APIV1Service) prepareInstanceAISettingForUpdate(ctx context.Context, se
 	}
 
 	if err := preparePersistedTranscriptionConfig(setting, existing); err != nil {
+		return err
+	}
+	if err := preparePersistedTTSConfig(setting, existing); err != nil {
 		return err
 	}
 	return nil
@@ -166,6 +172,43 @@ func preparePersistedTranscriptionConfig(setting *storepb.InstanceAISetting, exi
 	}
 	if len(cfg.Prompt) > maxTranscriptionConfigPromptLength {
 		return errors.Errorf("transcription prompt is too long; maximum length is %d characters", maxTranscriptionConfigPromptLength)
+	}
+	return nil
+}
+
+func preparePersistedTTSConfig(setting *storepb.InstanceAISetting, existing *storepb.InstanceAISetting) error {
+	// Preserve the previously stored TTS config when the request omits it,
+	// matching the same "absence == keep" semantics used for API keys and transcription.
+	if setting.Tts == nil && existing != nil {
+		setting.Tts = existing.GetTts()
+	}
+	if setting.Tts == nil {
+		return nil
+	}
+
+	cfg := setting.Tts
+	cfg.ProviderId = strings.TrimSpace(cfg.ProviderId)
+	cfg.Speaker = strings.TrimSpace(cfg.Speaker)
+	cfg.Model = strings.TrimSpace(cfg.Model)
+
+	if cfg.ProviderId != "" {
+		referenced := false
+		for _, provider := range setting.Providers {
+			if provider != nil && provider.Id == cfg.ProviderId {
+				referenced = true
+				break
+			}
+		}
+		if !referenced {
+			return errors.Errorf("tts provider_id %q does not reference any configured provider", cfg.ProviderId)
+		}
+	}
+
+	if len(cfg.Speaker) > maxTTSConfigSpeakerLength {
+		return errors.Errorf("tts speaker is too long; maximum length is %d characters", maxTTSConfigSpeakerLength)
+	}
+	if len(cfg.Model) > maxTTSConfigModelLength {
+		return errors.Errorf("tts model is too long; maximum length is %d characters", maxTTSConfigModelLength)
 	}
 	return nil
 }

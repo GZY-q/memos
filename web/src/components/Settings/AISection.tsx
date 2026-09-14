@@ -21,6 +21,8 @@ import {
   InstanceSetting_Key,
   InstanceSetting_TranscriptionConfig,
   InstanceSetting_TranscriptionConfigSchema,
+  InstanceSetting_TTSConfig,
+  InstanceSetting_TTSConfigSchema,
   InstanceSettingSchema,
 } from "@/types/proto/api/v1/instance_service_pb";
 import { useTranslate } from "@/utils/i18n";
@@ -47,7 +49,17 @@ type LocalTranscription = {
   prompt: string;
 };
 
-const providerTypeOptions = [InstanceSetting_AIProviderType.OPENAI, InstanceSetting_AIProviderType.GEMINI];
+type LocalTTS = {
+  providerId: string;
+  speaker: string;
+  model: string;
+};
+
+const providerTypeOptions = [
+  InstanceSetting_AIProviderType.OPENAI,
+  InstanceSetting_AIProviderType.GEMINI,
+  InstanceSetting_AIProviderType.VOLCENGINE_ARK,
+];
 
 const byokNotes = ["setting.ai.byok-key-note", "setting.ai.byok-storage-note", "setting.ai.byok-model-note"] as const;
 
@@ -72,6 +84,12 @@ const toLocalTranscription = (config: InstanceSetting_TranscriptionConfig | unde
   model: config?.model ?? "",
   language: config?.language ?? "",
   prompt: config?.prompt ?? "",
+});
+
+const toLocalTTS = (config: InstanceSetting_TTSConfig | undefined): LocalTTS => ({
+  providerId: config?.providerId ?? "",
+  speaker: config?.speaker ?? "",
+  model: config?.model ?? "",
 });
 
 const newProvider = (): LocalAIProvider => ({
@@ -101,12 +119,20 @@ const toTranscriptionConfig = (transcription: LocalTranscription) =>
     prompt: transcription.prompt,
   });
 
+const toTTSConfig = (tts: LocalTTS) =>
+  create(InstanceSetting_TTSConfigSchema, {
+    providerId: tts.providerId,
+    speaker: tts.speaker.trim(),
+    model: tts.model.trim(),
+  });
+
 const AISection = () => {
   const t = useTranslate();
   const saveInstanceSetting = useInstanceSettingUpdater();
   const { aiSetting: originalSetting } = useInstance();
   const [providers, setProviders] = useState<LocalAIProvider[]>(() => originalSetting.providers.map(toLocalProvider));
   const [transcription, setTranscription] = useState<LocalTranscription>(() => toLocalTranscription(originalSetting.transcription));
+  const [tts, setTts] = useState<LocalTTS>(() => toLocalTTS(originalSetting.tts));
   const [editingProvider, setEditingProvider] = useState<LocalAIProvider | undefined>();
   const [deleteTarget, setDeleteTarget] = useState<LocalAIProvider | undefined>();
 
@@ -127,20 +153,35 @@ const AISection = () => {
     }
   }, [originalSetting.transcription]);
 
+  const lastSyncedTTS = useRef<LocalTTS>(toLocalTTS(originalSetting.tts));
+  useEffect(() => {
+    const next = toLocalTTS(originalSetting.tts);
+    if (!isEqual(lastSyncedTTS.current, next)) {
+      setTts(next);
+      lastSyncedTTS.current = next;
+    }
+  }, [originalSetting.tts]);
+
   const originalTranscription = useMemo(() => toLocalTranscription(originalSetting.transcription), [originalSetting.transcription]);
   const transcriptionHasChanges = !isEqual(transcription, originalTranscription);
+
+  const originalTTS = useMemo(() => toLocalTTS(originalSetting.tts), [originalSetting.tts]);
+  const ttsHasChanges = !isEqual(tts, originalTTS);
 
   const transcriptionProviderRef = useMemo(
     () => providers.find((provider) => provider.id === transcription.providerId),
     [providers, transcription.providerId],
   );
 
-  // Persists the AI setting using a specific providers list and transcription
-  // value. Provider operations pass originalSetting.transcription so an
-  // in-progress transcription draft is never accidentally committed.
+  const ttsProviderRef = useMemo(() => providers.find((provider) => provider.id === tts.providerId), [providers, tts.providerId]);
+
+  // Persists the AI setting using a specific providers list and feature configs
+  // value. Provider operations pass originalSetting values so in-progress
+  // drafts are never accidentally committed.
   const persistAISetting = async (
     nextProviders: LocalAIProvider[],
     nextTranscription: InstanceSetting_TranscriptionConfig | undefined,
+    nextTTS: InstanceSetting_TTSConfig | undefined,
     errorContext: string,
   ) => {
     return saveInstanceSetting({
@@ -152,6 +193,7 @@ const AISection = () => {
           value: create(InstanceSetting_AISettingSchema, {
             providers: nextProviders.map(toProviderConfig),
             transcription: nextTranscription,
+            tts: nextTTS,
           }),
         },
       }),
@@ -186,7 +228,7 @@ const AISection = () => {
       ? providers.map((item) => (item.id === normalizedProvider.id ? normalizedProvider : item))
       : [...providers, normalizedProvider];
 
-    const ok = await persistAISetting(nextProviders, originalSetting.transcription, "Update AI provider");
+    const ok = await persistAISetting(nextProviders, originalSetting.transcription, originalSetting.tts, "Update AI provider");
     if (!ok) return;
     setProviders(nextProviders);
     setEditingProvider(undefined);
@@ -197,20 +239,25 @@ const AISection = () => {
     const target = deleteTarget;
     const nextProviders = providers.filter((provider) => provider.id !== target.id);
 
-    // If the persisted transcription references the deleted provider, the
+    // If the persisted feature configs reference the deleted provider, the
     // server would reject the save (provider_id must reference an existing
-    // provider). Send a cleared transcription in that case.
+    // provider). Send a cleared config in that case.
     const persistedTranscription = originalSetting.transcription;
     const nextTranscription =
       persistedTranscription && persistedTranscription.providerId === target.id
         ? create(InstanceSetting_TranscriptionConfigSchema, {})
         : persistedTranscription;
+    const persistedTTS = originalSetting.tts;
+    const nextTTS = persistedTTS && persistedTTS.providerId === target.id ? create(InstanceSetting_TTSConfigSchema, {}) : persistedTTS;
 
-    const ok = await persistAISetting(nextProviders, nextTranscription, "Delete AI provider");
+    const ok = await persistAISetting(nextProviders, nextTranscription, nextTTS, "Delete AI provider");
     if (!ok) return;
     setProviders(nextProviders);
     if (transcription.providerId === target.id) {
       setTranscription((prev) => ({ ...prev, providerId: "" }));
+    }
+    if (tts.providerId === target.id) {
+      setTts((prev) => ({ ...prev, providerId: "" }));
     }
     setDeleteTarget(undefined);
   };
@@ -220,7 +267,15 @@ const AISection = () => {
       toast.error(t("setting.ai.transcription-empty-providers"));
       return;
     }
-    await persistAISetting(providers, toTranscriptionConfig(transcription), "Update transcription");
+    await persistAISetting(providers, toTranscriptionConfig(transcription), originalSetting.tts, "Update transcription");
+  };
+
+  const handleSaveTTS = async () => {
+    if (tts.providerId && !ttsProviderRef) {
+      toast.error(t("setting.ai.tts-empty-providers"));
+      return;
+    }
+    await persistAISetting(providers, originalSetting.transcription, toTTSConfig(tts), "Update text-to-speech");
   };
 
   return (
@@ -326,6 +381,19 @@ const AISection = () => {
           onChange={setTranscription}
           referencedProvider={transcriptionProviderRef}
         />
+      </SettingGroup>
+
+      <SettingGroup
+        title={t("setting.ai.tts-title")}
+        description={t("setting.ai.tts-description")}
+        showSeparator
+        actions={
+          <Button disabled={!ttsHasChanges} onClick={handleSaveTTS}>
+            {t("common.save")}
+          </Button>
+        }
+      >
+        <TTSForm providers={providers} tts={tts} onChange={setTts} referencedProvider={ttsProviderRef} />
       </SettingGroup>
 
       <AIProviderDialog
@@ -542,9 +610,88 @@ const getDefaultEndpointPlaceholder = (type: InstanceSetting_AIProviderType) => 
       return "https://api.openai.com/v1";
     case InstanceSetting_AIProviderType.GEMINI:
       return "https://generativelanguage.googleapis.com/v1beta";
+    case InstanceSetting_AIProviderType.VOLCENGINE_ARK:
+      return "https://openspeech.bytedance.com/api/v3/plan";
     default:
       return "";
   }
+};
+
+interface TTSFormProps {
+  providers: LocalAIProvider[];
+  tts: LocalTTS;
+  referencedProvider: LocalAIProvider | undefined;
+  onChange: (next: LocalTTS) => void;
+}
+
+const TTSForm = ({ providers, tts, referencedProvider, onChange }: TTSFormProps) => {
+  const t = useTranslate();
+  const noProviders = providers.length === 0;
+
+  const providerOptions = useMemo(
+    () => [
+      { value: "__none__", label: t("setting.ai.tts-no-provider") },
+      ...providers.map((provider) => ({ value: provider.id, label: provider.title || provider.id })),
+    ],
+    [providers, t],
+  );
+
+  const update = (partial: Partial<LocalTTS>) => {
+    onChange({ ...tts, ...partial });
+  };
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl">
+      <div className="flex flex-col gap-1.5 sm:col-span-2">
+        <Label>{t("setting.ai.tts-provider")}</Label>
+        <Select
+          value={tts.providerId || "__none__"}
+          items={providerOptions}
+          onValueChange={(value) => update({ providerId: value === "__none__" ? "" : value })}
+          disabled={noProviders}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {providerOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {noProviders && <p className="text-xs text-muted-foreground">{t("setting.ai.tts-empty-providers")}</p>}
+        {referencedProvider && !referencedProvider.apiKeySet && (
+          <p className="text-xs text-destructive">{t("setting.ai.transcription-warning-no-key")}</p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("setting.ai.tts-speaker")}</Label>
+        <Input
+          value={tts.speaker}
+          onChange={(e) => update({ speaker: e.target.value })}
+          placeholder="zh_female_vv_uranus_bigtts"
+          disabled={!tts.providerId}
+          maxLength={128}
+        />
+        <p className="text-xs text-muted-foreground">{t("setting.ai.tts-speaker-help")}</p>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("setting.ai.tts-model")}</Label>
+        <Input
+          value={tts.model}
+          onChange={(e) => update({ model: e.target.value })}
+          placeholder="seed-tts-2.0"
+          disabled={!tts.providerId}
+          maxLength={128}
+        />
+        <p className="text-xs text-muted-foreground">{t("setting.ai.tts-model-help")}</p>
+      </div>
+    </div>
+  );
 };
 
 export default AISection;

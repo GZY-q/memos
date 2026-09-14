@@ -370,6 +370,7 @@ func convertInstanceAISettingFromStore(setting *storepb.InstanceAISetting) *v1pb
 	aiSetting := &v1pb.InstanceSetting_AISetting{
 		Providers:     make([]*v1pb.InstanceSetting_AIProviderConfig, 0, len(setting.Providers)),
 		Transcription: convertTranscriptionConfigFromStore(setting.GetTranscription()),
+		Tts:           convertTTSConfigFromStore(setting.GetTts()),
 	}
 	for _, provider := range setting.Providers {
 		if provider == nil {
@@ -396,6 +397,7 @@ func convertInstanceAISettingToStore(setting *v1pb.InstanceSetting_AISetting) *s
 	aiSetting := &storepb.InstanceAISetting{
 		Providers:     make([]*storepb.AIProviderConfig, 0, len(setting.Providers)),
 		Transcription: convertTranscriptionConfigToStore(setting.GetTranscription()),
+		Tts:           convertTTSConfigToStore(setting.GetTts()),
 	}
 	for _, provider := range setting.Providers {
 		if provider == nil {
@@ -433,5 +435,27 @@ func convertTranscriptionConfigToStore(setting *v1pb.InstanceSetting_Transcripti
 		Model:      setting.GetModel(),
 		Language:   setting.GetLanguage(),
 		Prompt:     setting.GetPrompt(),
+	}
+}
+
+func convertTTSConfigFromStore(setting *storepb.TTSConfig) *v1pb.InstanceSetting_TTSConfig {
+	if setting == nil {
+		return nil
+	}
+	return &v1pb.InstanceSetting_TTSConfig{
+		ProviderId: setting.GetProviderId(),
+		Speaker:    setting.GetSpeaker(),
+		Model:      setting.GetModel(),
+	}
+}
+
+func convertTTSConfigToStore(setting *v1pb.InstanceSetting_TTSConfig) *storepb.TTSConfig {
+	if setting == nil {
+		return nil
+	}
+	return &storepb.TTSConfig{
+		ProviderId: setting.GetProviderId(),
+		Speaker:    setting.GetSpeaker(),
+		Model:      setting.GetModel(),
 	}
 }

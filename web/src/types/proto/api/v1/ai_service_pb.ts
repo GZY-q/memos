@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file api/v1/ai_service.proto.
  */
 export const file_api_v1_ai_service: GenFile = /*@__PURE__*/
-  fileDesc("ChdhcGkvdjEvYWlfc2VydmljZS5wcm90bxIMbWVtb3MuYXBpLnYxIkkKEVRyYW5zY3JpYmVSZXF1ZXN0EjQKBWF1ZGlvGAEgASgLMiAubWVtb3MuYXBpLnYxLlRyYW5zY3JpcHRpb25BdWRpb0ID4EECIncKElRyYW5zY3JpcHRpb25BdWRpbxIWCgdjb250ZW50GAEgASgMQgPgQQRIABINCgN1cmkYAiABKAlIABIVCghmaWxlbmFtZRgDIAEoCUID4EEBEhkKDGNvbnRlbnRfdHlwZRgEIAEoCUID4EEBQggKBnNvdXJjZSIiChJUcmFuc2NyaWJlUmVzcG9uc2USDAoEdGV4dBgBIAEoCTKGAQoJQUlTZXJ2aWNlEnkKClRyYW5zY3JpYmUSHy5tZW1vcy5hcGkudjEuVHJhbnNjcmliZVJlcXVlc3QaIC5tZW1vcy5hcGkudjEuVHJhbnNjcmliZVJlc3BvbnNlIijaQQVhdWRpb4LT5JMCGjoBKiIVL2FwaS92MS9haTp0cmFuc2NyaWJlQqYBChBjb20ubWVtb3MuYXBpLnYxQg5BaVNlcnZpY2VQcm90b1ABWjBnaXRodWIuY29tL3VzZW1lbW9zL21lbW9zL3Byb3RvL2dlbi9hcGkvdjE7YXBpdjGiAgNNQViqAgxNZW1vcy5BcGkuVjHKAgxNZW1vc1xBcGlcVjHiAhhNZW1vc1xBcGlcVjFcR1BCTWV0YWRhdGHqAg5NZW1vczo6QXBpOjpWMWIGcHJvdG8z", [file_google_api_annotations, file_google_api_client, file_google_api_field_behavior]);
+  fileDesc("ChdhcGkvdjEvYWlfc2VydmljZS5wcm90bxIMbWVtb3MuYXBpLnYxIkkKEVRyYW5zY3JpYmVSZXF1ZXN0EjQKBWF1ZGlvGAEgASgLMiAubWVtb3MuYXBpLnYxLlRyYW5zY3JpcHRpb25BdWRpb0ID4EECIncKElRyYW5zY3JpcHRpb25BdWRpbxIWCgdjb250ZW50GAEgASgMQgPgQQRIABINCgN1cmkYAiABKAlIABIVCghmaWxlbmFtZRgDIAEoCUID4EEBEhkKDGNvbnRlbnRfdHlwZRgEIAEoCUID4EEBQggKBnNvdXJjZSIiChJUcmFuc2NyaWJlUmVzcG9uc2USDAoEdGV4dBgBIAEoCSImChFTeW50aGVzaXplUmVxdWVzdBIRCgR0ZXh0GAEgASgJQgPgQQIiOQoSU3ludGhlc2l6ZVJlc3BvbnNlEg0KBWF1ZGlvGAEgASgMEhQKDGNvbnRlbnRfdHlwZRgCIAEoCTKAAgoJQUlTZXJ2aWNlEnkKClRyYW5zY3JpYmUSHy5tZW1vcy5hcGkudjEuVHJhbnNjcmliZVJlcXVlc3QaIC5tZW1vcy5hcGkudjEuVHJhbnNjcmliZVJlc3BvbnNlIijaQQVhdWRpb4LT5JMCGjoBKiIVL2FwaS92MS9haTp0cmFuc2NyaWJlEngKClN5bnRoZXNpemUSHy5tZW1vcy5hcGkudjEuU3ludGhlc2l6ZVJlcXVlc3QaIC5tZW1vcy5hcGkudjEuU3ludGhlc2l6ZVJlc3BvbnNlIifaQQR0ZXh0gtPkkwIaOgEqIhUvYXBpL3YxL2FpOnN5bnRoZXNpemVCpgEKEGNvbS5tZW1vcy5hcGkudjFCDkFpU2VydmljZVByb3RvUAFaMGdpdGh1Yi5jb20vdXNlbWVtb3MvbWVtb3MvcHJvdG8vZ2VuL2FwaS92MTthcGl2MaICA01BWKoCDE1lbW9zLkFwaS5WMcoCDE1lbW9zXEFwaVxWMeICGE1lbW9zXEFwaVxWMVxHUEJNZXRhZGF0YeoCDk1lbW9zOjpBcGk6OlYxYgZwcm90bzM", [file_google_api_annotations, file_google_api_client, file_google_api_field_behavior]);
 
 /**
  * @generated from message memos.api.v1.TranscribeRequest
@@ -101,6 +101,51 @@ export const TranscribeResponseSchema: GenMessage<TranscribeResponse> = /*@__PUR
   messageDesc(file_api_v1_ai_service, 2);
 
 /**
+ * @generated from message memos.api.v1.SynthesizeRequest
+ */
+export type SynthesizeRequest = Message<"memos.api.v1.SynthesizeRequest"> & {
+  /**
+   * Required. Text to convert to speech.
+   *
+   * @generated from field: string text = 1;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message memos.api.v1.SynthesizeRequest.
+ * Use `create(SynthesizeRequestSchema)` to create a new message.
+ */
+export const SynthesizeRequestSchema: GenMessage<SynthesizeRequest> = /*@__PURE__*/
+  messageDesc(file_api_v1_ai_service, 3);
+
+/**
+ * @generated from message memos.api.v1.SynthesizeResponse
+ */
+export type SynthesizeResponse = Message<"memos.api.v1.SynthesizeResponse"> & {
+  /**
+   * Generated audio bytes.
+   *
+   * @generated from field: bytes audio = 1;
+   */
+  audio: Uint8Array;
+
+  /**
+   * MIME type of the generated audio, e.g. "audio/mpeg".
+   *
+   * @generated from field: string content_type = 2;
+   */
+  contentType: string;
+};
+
+/**
+ * Describes the message memos.api.v1.SynthesizeResponse.
+ * Use `create(SynthesizeResponseSchema)` to create a new message.
+ */
+export const SynthesizeResponseSchema: GenMessage<SynthesizeResponse> = /*@__PURE__*/
+  messageDesc(file_api_v1_ai_service, 4);
+
+/**
  * @generated from service memos.api.v1.AIService
  */
 export const AIService: GenService<{
@@ -113,6 +158,16 @@ export const AIService: GenService<{
     methodKind: "unary";
     input: typeof TranscribeRequestSchema;
     output: typeof TranscribeResponseSchema;
+  },
+  /**
+   * Synthesize converts text to speech audio using an instance AI provider.
+   *
+   * @generated from rpc memos.api.v1.AIService.Synthesize
+   */
+  synthesize: {
+    methodKind: "unary";
+    input: typeof SynthesizeRequestSchema;
+    output: typeof SynthesizeResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_api_v1_ai_service, 0);

@@ -17,6 +17,15 @@ service AIService {
     };
     option (google.api.method_signature) = "audio";
   }
+
+  // Synthesize converts text to speech audio using an instance AI provider.
+  rpc Synthesize(SynthesizeRequest) returns (SynthesizeResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/ai:synthesize"
+      body: "*"
+    };
+    option (google.api.method_signature) = "text";
+  }
 }
 
 message TranscribeRequest {
@@ -43,4 +52,17 @@ message TranscriptionAudio {
 message TranscribeResponse {
   // The transcribed text.
   string text = 1;
+}
+
+message SynthesizeRequest {
+  // Required. Text to convert to speech.
+  string text = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message SynthesizeResponse {
+  // Generated audio bytes.
+  bytes audio = 1;
+
+  // MIME type of the generated audio, e.g. "audio/mpeg".
+  string content_type = 2;
 }

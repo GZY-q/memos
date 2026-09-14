@@ -30,6 +30,10 @@ vi.mock("@/components/MemoActionMenu/hooks", () => ({
   useMemoActionHandlers: () => handlers,
 }));
 
+vi.mock("@/hooks/useInstanceQueries", () => ({
+  useInstanceSetting: () => ({ data: undefined }),
+}));
+
 vi.mock("@/utils/i18n", () => ({
   useTranslate: () => (key: string) => key,
 }));

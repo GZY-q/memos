@@ -6,6 +6,31 @@ info:
     title: ""
     version: 0.0.1
 paths:
+    /api/v1/ai:synthesize:
+        post:
+            tags:
+                - AIService
+            description: Synthesize converts text to speech audio using an instance AI provider.
+            operationId: AIService_Synthesize
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/SynthesizeRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SynthesizeResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/ai:transcribe:
         post:
             tags:
@@ -3430,6 +3455,7 @@ components:
                         - AI_PROVIDER_TYPE_UNSPECIFIED
                         - OPENAI
                         - GEMINI
+                        - VOLCENGINE_ARK
                     type: string
                     format: enum
                 endpoint:
@@ -3461,6 +3487,12 @@ components:
                     description: |-
                         transcription is the speech-to-text feature configuration.
                          When unset or transcription.provider_id is empty, transcription is disabled.
+                tts:
+                    allOf:
+                        - $ref: '#/components/schemas/InstanceSetting_TTSConfig'
+                    description: |-
+                        tts is the text-to-speech feature configuration.
+                         When unset or tts.provider_id is empty, TTS is disabled.
             description: AI provider configuration settings.
         InstanceSetting_AccessSetting:
             type: object
@@ -3581,6 +3613,28 @@ components:
                     type: string
                     description: Storage used for new attachments.
             description: Storage configuration settings for instance attachments.
+        InstanceSetting_TTSConfig:
+            type: object
+            properties:
+                providerId:
+                    type: string
+                    description: |-
+                        provider_id references an entry in AISetting.providers[].id.
+                         Empty string means TTS is disabled.
+                speaker:
+                    type: string
+                    description: |-
+                        speaker is the provider-specific voice identifier.
+                         VOLCENGINE_ARK examples:
+                           - zh_female_vv_uranus_bigtts
+                           - zh_female_gaolengyujie_uranus_bigtts
+                model:
+                    type: string
+                    description: |-
+                        model is the provider-specific model / resource identifier.
+                         Empty string falls back to the engine default
+                         (seed-tts-2.0 for VOLCENGINE_ARK providers).
+            description: TTSConfig configures the text-to-speech feature.
         InstanceSetting_TagMetadata:
             type: object
             properties:
@@ -4575,6 +4629,24 @@ components:
             description: |-
                 S3 configuration for an S3-compatible object store.
                  Reference: https://developers.cloudflare.com/r2/examples/aws/aws-sdk-go/
+        SynthesizeRequest:
+            required:
+                - text
+            type: object
+            properties:
+                text:
+                    type: string
+                    description: Required. Text to convert to speech.
+        SynthesizeResponse:
+            type: object
+            properties:
+                audio:
+                    type: string
+                    description: Generated audio bytes.
+                    format: bytes
+                contentType:
+                    type: string
+                    description: MIME type of the generated audio, e.g. "audio/mpeg".
         TestInstanceEmailSettingRequest:
             type: object
             properties:

@@ -35,12 +35,16 @@ const (
 const (
 	// AIServiceTranscribeProcedure is the fully-qualified name of the AIService's Transcribe RPC.
 	AIServiceTranscribeProcedure = "/memos.api.v1.AIService/Transcribe"
+	// AIServiceSynthesizeProcedure is the fully-qualified name of the AIService's Synthesize RPC.
+	AIServiceSynthesizeProcedure = "/memos.api.v1.AIService/Synthesize"
 )
 
 // AIServiceClient is a client for the memos.api.v1.AIService service.
 type AIServiceClient interface {
 	// Transcribe transcribes an audio file using an instance AI provider.
 	Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error)
+	// Synthesize converts text to speech audio using an instance AI provider.
+	Synthesize(context.Context, *connect.Request[v1.SynthesizeRequest]) (*connect.Response[v1.SynthesizeResponse], error)
 }
 
 // NewAIServiceClient constructs a client for the memos.api.v1.AIService service. By default, it
@@ -60,12 +64,19 @@ func NewAIServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...c
 			connect.WithSchema(aIServiceMethods.ByName("Transcribe")),
 			connect.WithClientOptions(opts...),
 		),
+		synthesize: connect.NewClient[v1.SynthesizeRequest, v1.SynthesizeResponse](
+			httpClient,
+			baseURL+AIServiceSynthesizeProcedure,
+			connect.WithSchema(aIServiceMethods.ByName("Synthesize")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // aIServiceClient implements AIServiceClient.
 type aIServiceClient struct {
 	transcribe *connect.Client[v1.TranscribeRequest, v1.TranscribeResponse]
+	synthesize *connect.Client[v1.SynthesizeRequest, v1.SynthesizeResponse]
 }
 
 // Transcribe calls memos.api.v1.AIService.Transcribe.
@@ -73,10 +84,17 @@ func (c *aIServiceClient) Transcribe(ctx context.Context, req *connect.Request[v
 	return c.transcribe.CallUnary(ctx, req)
 }
 
+// Synthesize calls memos.api.v1.AIService.Synthesize.
+func (c *aIServiceClient) Synthesize(ctx context.Context, req *connect.Request[v1.SynthesizeRequest]) (*connect.Response[v1.SynthesizeResponse], error) {
+	return c.synthesize.CallUnary(ctx, req)
+}
+
 // AIServiceHandler is an implementation of the memos.api.v1.AIService service.
 type AIServiceHandler interface {
 	// Transcribe transcribes an audio file using an instance AI provider.
 	Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error)
+	// Synthesize converts text to speech audio using an instance AI provider.
+	Synthesize(context.Context, *connect.Request[v1.SynthesizeRequest]) (*connect.Response[v1.SynthesizeResponse], error)
 }
 
 // NewAIServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -92,10 +110,18 @@ func NewAIServiceHandler(svc AIServiceHandler, opts ...connect.HandlerOption) (s
 		connect.WithSchema(aIServiceMethods.ByName("Transcribe")),
 		connect.WithHandlerOptions(opts...),
 	)
+	aIServiceSynthesizeHandler := connect.NewUnaryHandler(
+		AIServiceSynthesizeProcedure,
+		svc.Synthesize,
+		connect.WithSchema(aIServiceMethods.ByName("Synthesize")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/memos.api.v1.AIService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AIServiceTranscribeProcedure:
 			aIServiceTranscribeHandler.ServeHTTP(w, r)
+		case AIServiceSynthesizeProcedure:
+			aIServiceSynthesizeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -107,4 +133,8 @@ type UnimplementedAIServiceHandler struct{}
 
 func (UnimplementedAIServiceHandler) Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AIService.Transcribe is not implemented"))
+}
+
+func (UnimplementedAIServiceHandler) Synthesize(context.Context, *connect.Request[v1.SynthesizeRequest]) (*connect.Response[v1.SynthesizeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AIService.Synthesize is not implemented"))
 }

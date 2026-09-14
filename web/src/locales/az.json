@@ -490,7 +490,11 @@
       "public-description": "Hamıya görünür",
       "space": "Sahə",
       "space-description": "Bu sahənin üzvlərinə görünür"
-    }
+    },
+    "read-aloud": "Read Aloud",
+    "tts-empty": "This memo has no readable text.",
+    "tts-error": "Failed to read memo aloud.",
+    "tts-stop": "Stop Reading"
   },
   "message": {
     "archived-successfully": "Uğurla arxivləndi",
@@ -635,10 +639,10 @@
       "add-provider": "Provayder əlavə et",
       "api-key": "API açarı",
       "api-key-required": "API açarı tələb olunur.",
-      "byok-description": "OpenAI və ya Gemini-ni öz hesabınızdan olan API açarı ilə qoşun. Memos provayderə birbaşa bu serverdən müraciət edir.",
+      "byok-description": "Connect OpenAI, Gemini, or Volcengine Ark with an API key from your own account. Memos calls the provider directly from this server.",
       "byok-key-note": "Öz provayder hesabınızdan olan açarı işlədin; Memos paylaşılan süni intellekt açarları ilə gəlmir.",
       "byok-label": "BYOK",
-      "byok-model-note": "Audio transkripsiyası kimi funksiyalar üçün dəstəklənən modelləri Memos özü seçir.",
+      "byok-model-note": "Memos selects supported models for features like audio transcription and text-to-speech.",
       "byok-storage-note": "Açarlar bu instansda qalır və parametrlər yüklənəndə maskalanır.",
       "byok-title": "Öz süni intellekt hesabınızı işlədin",
       "configured": "Konfiqurasiya edilib",
@@ -674,7 +678,16 @@
       "transcription-prompt": "Prompt ipucları",
       "transcription-provider": "Provayder",
       "transcription-title": "Transkripsiya",
-      "transcription-warning-no-key": "Seçilmiş provayderin API açarı təyin edilməyib. Açar əlavə etmək üçün yuxarıdakı inteqrasiyanı redaktə edin."
+      "transcription-warning-no-key": "Seçilmiş provayderin API açarı təyin edilməyib. Açar əlavə etmək üçün yuxarıdakı inteqrasiyanı redaktə edin.",
+      "tts-description": "Text-to-speech settings used when reading a memo aloud.",
+      "tts-empty-providers": "Add an AI integration first to enable text-to-speech.",
+      "tts-model-help": "Resource id sent as X-Api-Resource-Id. Leave empty to use seed-tts-2.0.",
+      "tts-model": "Model / resource id",
+      "tts-no-provider": "None — text-to-speech disabled",
+      "tts-provider": "Provider",
+      "tts-speaker-help": "Volcengine Ark voice id, e.g. zh_female_vv_uranus_bigtts.",
+      "tts-speaker": "Speaker",
+      "tts-title": "Text to speech"
     },
     "instance": {
       "access-description": "Bu instans üçün anonim baxışı, qeydiyyatı, doğrulamanı və profil redaktəsini idarə edin.",

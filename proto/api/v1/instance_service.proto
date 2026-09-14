@@ -307,6 +307,10 @@ message InstanceSetting {
     // transcription is the speech-to-text feature configuration.
     // When unset or transcription.provider_id is empty, transcription is disabled.
     TranscriptionConfig transcription = 2;
+
+    // tts is the text-to-speech feature configuration.
+    // When unset or tts.provider_id is empty, TTS is disabled.
+    TTSConfig tts = 3;
   }
 
   // AIProviderConfig represents one callable AI provider connection.
@@ -328,6 +332,8 @@ message InstanceSetting {
     AI_PROVIDER_TYPE_UNSPECIFIED = 0;
     OPENAI = 1;
     GEMINI = 2;
+    // VOLCENGINE_ARK is Volcengine Ark Agent Plan speech APIs (seed-tts / seed-asr).
+    VOLCENGINE_ARK = 3;
   }
 
   // TranscriptionConfig configures the speech-to-text feature.
@@ -347,6 +353,24 @@ message InstanceSetting {
 
     // prompt is a default spelling/vocabulary hint passed to the provider.
     string prompt = 4;
+  }
+
+  // TTSConfig configures the text-to-speech feature.
+  message TTSConfig {
+    // provider_id references an entry in AISetting.providers[].id.
+    // Empty string means TTS is disabled.
+    string provider_id = 1;
+
+    // speaker is the provider-specific voice identifier.
+    // VOLCENGINE_ARK examples:
+    //   - zh_female_vv_uranus_bigtts
+    //   - zh_female_gaolengyujie_uranus_bigtts
+    string speaker = 2;
+
+    // model is the provider-specific model / resource identifier.
+    // Empty string falls back to the engine default
+    // (seed-tts-2.0 for VOLCENGINE_ARK providers).
+    string model = 3;
   }
 
   // Access policy configuration for the instance.

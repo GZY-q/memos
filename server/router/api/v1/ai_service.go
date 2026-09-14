@@ -16,6 +16,8 @@ import (
 	audiollmgemini "github.com/usememos/memos/internal/ai/audiollm/gemini"
 	"github.com/usememos/memos/internal/ai/stt"
 	sttopenai "github.com/usememos/memos/internal/ai/stt/openai"
+	"github.com/usememos/memos/internal/ai/tts"
+	ttsark "github.com/usememos/memos/internal/ai/tts/ark"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 	storepb "github.com/usememos/memos/proto/gen/store"
 )
@@ -23,6 +25,7 @@ import (
 const (
 	maxTranscriptionAudioSizeBytes = 25 * MebiByte
 	maxTranscriptionFilenameLength = 255
+	maxSynthesizeTextLength        = 5000
 )
 
 var supportedTranscriptionContentTypes = map[string]bool{
@@ -118,6 +121,95 @@ func (s *APIV1Service) Transcribe(ctx context.Context, request *v1pb.TranscribeR
 		return nil, status.Errorf(codes.Internal, "failed to transcribe audio: %v", err)
 	}
 	return &v1pb.TranscribeResponse{Text: text}, nil
+}
+
+// Synthesize converts text to speech audio using an instance AI provider.
+func (s *APIV1Service) Synthesize(ctx context.Context, request *v1pb.SynthesizeRequest) (*v1pb.SynthesizeResponse, error) {
+	user, err := s.fetchCurrentUser(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
+	}
+	if user == nil {
+		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
+	}
+
+	text := strings.TrimSpace(request.GetText())
+	if text == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "text is required")
+	}
+	if len([]rune(text)) > maxSynthesizeTextLength {
+		return nil, status.Errorf(codes.InvalidArgument, "text is too long; maximum length is %d characters", maxSynthesizeTextLength)
+	}
+
+	aiSetting, err := s.Store.GetInstanceAISetting(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get AI setting: %v", err)
+	}
+	persisted := aiSetting.GetTts()
+
+	providerID := persisted.GetProviderId()
+	if providerID == "" {
+		return nil, status.Errorf(codes.FailedPrecondition, "text-to-speech is not configured")
+	}
+
+	provider, err := s.resolveAIProvider(aiSetting, providerID)
+	if err != nil {
+		return nil, err
+	}
+
+	model := persisted.GetModel()
+	if model == "" {
+		defaultModel, err := ai.DefaultTTSModel(provider.Type)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "%v", err)
+		}
+		model = defaultModel
+	}
+	speaker := persisted.GetSpeaker()
+	if speaker == "" {
+		defaultSpeaker, err := ai.DefaultTTSSpeaker(provider.Type)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "%v", err)
+		}
+		speaker = defaultSpeaker
+	}
+
+	var audio []byte
+	var contentType string
+	switch provider.Type {
+	case ai.ProviderVolcengineArk:
+		audio, contentType, err = s.synthesizeViaArk(ctx, provider, tts.Request{
+			Text:    text,
+			Speaker: speaker,
+			Model:   model,
+		})
+	default:
+		return nil, status.Errorf(codes.FailedPrecondition,
+			"provider type %q is not supported for text-to-speech", provider.Type)
+	}
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to synthesize speech: %v", err)
+	}
+	return &v1pb.SynthesizeResponse{
+		Audio:       audio,
+		ContentType: contentType,
+	}, nil
+}
+
+func (*APIV1Service) synthesizeViaArk(
+	ctx context.Context,
+	provider ai.ProviderConfig,
+	req tts.Request,
+) ([]byte, string, error) {
+	synthesizer, err := ttsark.New(provider, tts.ApplyOptions(nil))
+	if err != nil {
+		return nil, "", errors.Wrap(err, "failed to create Ark TTS synthesizer")
+	}
+	resp, err := synthesizer.Synthesize(ctx, req)
+	if err != nil {
+		return nil, "", err
+	}
+	return resp.Audio, resp.ContentType, nil
 }
 
 func (*APIV1Service) transcribeViaSTT(
@@ -225,6 +317,8 @@ func convertAIProviderTypeFromStore(providerType storepb.AIProviderType) ai.Prov
 		return ai.ProviderOpenAI
 	case storepb.AIProviderType_GEMINI:
 		return ai.ProviderGemini
+	case storepb.AIProviderType_VOLCENGINE_ARK:
+		return ai.ProviderVolcengineArk
 	default:
 		return ""
 	}

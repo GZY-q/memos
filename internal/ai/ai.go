@@ -8,6 +8,8 @@ const (
 	ProviderOpenAI ProviderType = "OPENAI"
 	// ProviderGemini is Google's Gemini API.
 	ProviderGemini ProviderType = "GEMINI"
+	// ProviderVolcengineArk is Volcengine Ark Agent Plan speech APIs.
+	ProviderVolcengineArk ProviderType = "VOLCENGINE_ARK"
 )
 
 // ProviderConfig configures a callable AI provider connection.

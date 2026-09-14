@@ -26,6 +26,8 @@ const (
 	maxTranscriptionModelLength       = 256
 	maxTranscriptionLanguageLength    = 32
 	maxTranscriptionPromptLength      = 4096
+	maxTTSSpeakerLength               = 128
+	maxTTSModelLength                 = 128
 )
 
 var (
@@ -330,6 +332,10 @@ func normalizeDeploymentAISetting(setting *storepb.InstanceAISetting) error {
 			if provider.Endpoint == "" {
 				provider.Endpoint = "https://generativelanguage.googleapis.com/v1beta"
 			}
+		case storepb.AIProviderType_VOLCENGINE_ARK:
+			if provider.Endpoint == "" {
+				provider.Endpoint = "https://openspeech.bytedance.com/api/v3/plan"
+			}
 		default:
 			return errors.Errorf("aiSetting provider %q has unsupported type", provider.Id)
 		}
@@ -346,6 +352,19 @@ func normalizeDeploymentAISetting(setting *storepb.InstanceAISetting) error {
 		}
 		if len(transcription.Model) > maxTranscriptionModelLength || len(transcription.Language) > maxTranscriptionLanguageLength || len(transcription.Prompt) > maxTranscriptionPromptLength {
 			return errors.New("aiSetting transcription configuration exceeds a supported length limit")
+		}
+	}
+	if tts := setting.Tts; tts != nil {
+		tts.ProviderId = strings.TrimSpace(tts.ProviderId)
+		tts.Speaker = strings.TrimSpace(tts.Speaker)
+		tts.Model = strings.TrimSpace(tts.Model)
+		if tts.ProviderId != "" {
+			if _, ok := providers[tts.ProviderId]; !ok {
+				return errors.Errorf("aiSetting tts providerId %q does not reference a provider", tts.ProviderId)
+			}
+		}
+		if len(tts.Speaker) > maxTTSSpeakerLength || len(tts.Model) > maxTTSModelLength {
+			return errors.New("aiSetting tts configuration exceeds a supported length limit")
 		}
 	}
 	return nil

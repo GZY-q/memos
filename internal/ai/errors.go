@@ -14,4 +14,7 @@ var (
 	// ErrAudioLLMNotSupported indicates that the provider does not have a
 	// multimodal-audio LLM available in this codebase.
 	ErrAudioLLMNotSupported = errors.New("provider does not support multimodal audio capability")
+	// ErrTTSNotSupported indicates that the provider does not have a dedicated
+	// text-to-speech endpoint in this codebase.
+	ErrTTSNotSupported = errors.New("provider does not support text-to-speech capability")
 )

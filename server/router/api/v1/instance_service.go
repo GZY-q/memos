@@ -20,6 +20,8 @@ const (
 	maxTranscriptionConfigModelLength    = 256
 	maxTranscriptionConfigLanguageLength = 32
 	maxTranscriptionConfigPromptLength   = 4096
+	maxTTSConfigSpeakerLength            = 128
+	maxTTSConfigModelLength              = 128
 	maxBatchGetInstanceSettings          = 100
 )
 
