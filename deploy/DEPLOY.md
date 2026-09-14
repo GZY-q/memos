@@ -1,6 +1,6 @@
 # Memos 云端 Docker Compose 部署
 
-给 AI / 自动化脚本使用的完整执行版见 **[AI_DEPLOY.md](./AI_DEPLOY.md)**。
+**部署本仓库（自建 fork）请用：[AI_DEPLOY.md](./AI_DEPLOY.md)** — 从源码构建，**不要**用官方镜像 `neosmemo/memos`（没有导航/TTS/审计等 fork 功能）。
 
 本机未安装 Docker，镜像需在云服务器上构建/拉取。二进制产物在 `../build/`，适合不用 Docker 的场景。
 
@@ -8,8 +8,8 @@
 
 | 方式 | 适用 |
 | --- | --- |
-| `docker-compose.yml` | 无定制，直接跑官方 `neosmemo/memos:stable`（推荐） |
-| `docker-compose.build.yml` | 这个 fork / 本地改动，需要从源码构建 |
+| `docker-compose.build.yml` | **本 fork / 定制代码（推荐）**，从源码构建 |
+| `docker-compose.yml` | 仅上游功能、无本仓库改动时用官方 `neosmemo/memos:stable` |
 | `../build/memos-linux-*` | 服务器没有 Docker，直接丢静态二进制 |
 
 ## 方式一：官方镜像（最快）
