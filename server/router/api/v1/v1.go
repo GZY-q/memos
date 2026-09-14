@@ -17,6 +17,7 @@ import (
 	"github.com/usememos/memos/internal/markdown"
 	"github.com/usememos/memos/internal/profile"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
+	"github.com/usememos/memos/server/audit"
 	"github.com/usememos/memos/server/auth"
 	"github.com/usememos/memos/server/notification"
 	"github.com/usememos/memos/store"
@@ -206,6 +207,8 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 		// Rate-limit sensitive public procedures before the more expensive auth work.
 		rateLimiter,
 		NewAuthInterceptor(authorizer),
+		// After auth so actor identity is in context for protected procedures.
+		NewAuditInterceptor(audit.Default()),
 	)
 	connectMux := http.NewServeMux()
 	connectHandler := NewConnectServiceHandler(s)

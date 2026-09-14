@@ -3,6 +3,7 @@ package filter
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/pkg/errors"
 )
@@ -536,9 +537,29 @@ func (r *renderer) renderTextMatch(cond *TextMatchCondition) (renderResult, erro
 	if !ok {
 		return renderResult{}, errors.Errorf("unknown field %q", cond.Field)
 	}
+	// SQLite: route content.contains through the FTS5 trigram index when the
+	// needle is long enough for trigrams to help. Prefix/suffix and short
+	// needles keep the portable LIKE path.
+	if r.dialect == DialectSQLite && field.Name == "content" && cond.Mode == TextMatchContains && utf8.RuneCountInString(cond.Value) >= minFTSNeedleRunes {
+		return renderResult{
+			sql: fmt.Sprintf(
+				"EXISTS (SELECT 1 FROM `memo_fts` WHERE `memo_fts` MATCH %s AND `memo_fts`.`rowid` = `memo`.`id`)",
+				r.addArg(ftsMatchQuery(cond.Value)),
+			),
+		}, nil
+	}
 	column := field.columnExpr(r.dialect)
 	pattern := likePattern(cond.Mode, cond.Value)
 	return renderResult{sql: r.foldedLike(column, pattern)}, nil
+}
+
+// minFTSNeedleRunes is the shortest needle the trigram FTS path will accept.
+const minFTSNeedleRunes = 3
+
+// ftsMatchQuery wraps a user needle as a single FTS5 phrase so special
+// operators (*, NEAR, column filters, …) are treated as literal text.
+func ftsMatchQuery(value string) string {
+	return `"` + strings.ReplaceAll(value, `"`, `""`) + `"`
 }
 
 func (r *renderer) renderRegex(cond *RegexCondition) (renderResult, error) {

@@ -281,6 +281,17 @@ Outside `modules/navigation/` for TTS only:
 - **Upstream risk**: low-medium. Search engines stay inside the navigation module.
   TTS store is additive next to the existing hook.
 
+## Patch 9: SQLite FTS5 trigram search path
+
+- `store/migration/sqlite/0.31/07__memo_fts.sql` + `LATEST.sql` — external-content
+  FTS5 table (`tokenize=trigram`) with insert/update/delete triggers and backfill.
+- `internal/filter/render.go` — SQLite `content.contains` with ≥3 runes compiles
+  to `memo_fts MATCH` phrase query; shorter needles and other dialects keep LIKE.
+
+- **Reason**: substring search was a full-table LIKE scan.
+- **Upstream risk**: medium (migration file + LATEST + filter renderer). MySQL/Postgres
+  intentionally stay on LIKE in this pass to avoid requiring extensions.
+
 ## Patch 8: auth rate limit + user export + offline shell
 
 1. `server/router/api/v1/rate_limit.go` + Connect/gateway wiring — 10 req/min/IP
@@ -294,6 +305,15 @@ Outside `modules/navigation/` for TTS only:
 - **Reason**: brute-force baseline, backup export, flaky-network shell.
 - **Upstream risk**: medium for rate-limit interceptor order (keep before Auth).
   Export is additive. SW is production-only and opt-out by unregister if needed.
+
+## Patch 11: audit log for sensitive operations
+
+- `server/audit/` — structured slog audit events (no password/token in details).
+- Connect interceptor after Auth: SignIn/SignOut, Create/Update/DeleteUser,
+  PAT create/delete; export success also logs `user.export`.
+
+- **Reason**: self-hosted operators need a trail of auth and account changes.
+- **Upstream risk**: low. Additive interceptor; greppable `msg=audit` lines.
 
 ## Repo hygiene notes (local only)
 

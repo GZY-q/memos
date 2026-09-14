@@ -114,12 +114,37 @@ func TestCompileContainsEscapesLikeWildcards(t *testing.T) {
 	engine, err := NewEngine(NewSchema())
 	require.NoError(t, err)
 
-	stmt, err := engine.CompileToStatement(context.Background(), `content.contains("50%_off")`, RenderOptions{Dialect: DialectSQLite})
+	// Short needles stay on the LIKE path so trigram FTS is not required.
+	stmt, err := engine.CompileToStatement(context.Background(), `content.contains("%_")`, RenderOptions{Dialect: DialectSQLite})
 	require.NoError(t, err)
 	// The % and _ in the value must be escaped so they are matched literally,
 	// and SQLite needs an explicit ESCAPE clause.
 	require.Contains(t, stmt.SQL, `ESCAPE '\'`)
-	require.Equal(t, []any{`%50\%\_off%`}, stmt.Args)
+	require.Equal(t, []any{`%\%\_%`}, stmt.Args)
+}
+
+func TestCompileContainsUsesSQLiteFTSForLongNeedles(t *testing.T) {
+	t.Parallel()
+
+	engine, err := NewEngine(NewSchema())
+	require.NoError(t, err)
+
+	stmt, err := engine.CompileToStatement(context.Background(), `content.contains("meeting notes")`, RenderOptions{Dialect: DialectSQLite})
+	require.NoError(t, err)
+	require.Contains(t, stmt.SQL, "memo_fts")
+	require.Contains(t, stmt.SQL, "MATCH")
+	require.Equal(t, []any{`"meeting notes"`}, stmt.Args)
+
+	// Quoted phrase keeps FTS operators literal.
+	stmt, err = engine.CompileToStatement(context.Background(), `content.contains("NEAR(a b)")`, RenderOptions{Dialect: DialectSQLite})
+	require.NoError(t, err)
+	require.Equal(t, []any{`"NEAR(a b)"`}, stmt.Args)
+
+	// Other dialects keep portable LIKE/ILIKE.
+	pg, err := engine.CompileToStatement(context.Background(), `content.contains("meeting notes")`, RenderOptions{Dialect: DialectPostgres})
+	require.NoError(t, err)
+	require.Contains(t, pg.SQL, "ILIKE")
+	require.NotContains(t, pg.SQL, "memo_fts")
 }
 
 func TestRenderTagMembershipIsExactPerDialect(t *testing.T) {
@@ -493,10 +518,16 @@ func TestRenderTextMatchEscaping(t *testing.T) {
 	engine, err := NewEngine(NewSchema())
 	require.NoError(t, err)
 
-	// Both % and _ in the value must be escaped so they match literally.
-	stmt, err := engine.CompileToStatement(context.Background(), `content.contains("a%b_c")`, RenderOptions{Dialect: DialectSQLite})
+	// Short needle: both % and _ must be escaped so they match literally.
+	stmt, err := engine.CompileToStatement(context.Background(), `content.contains("a%")`, RenderOptions{Dialect: DialectSQLite})
 	require.NoError(t, err)
-	require.Equal(t, []any{`%a\%b\_c%`}, stmt.Args)
+	require.Contains(t, stmt.SQL, `ESCAPE '\'`)
+	require.Equal(t, []any{`%a\%%`}, stmt.Args)
+
+	// Long needle with wildcards is a literal FTS phrase (no LIKE metacharacters).
+	stmt, err = engine.CompileToStatement(context.Background(), `content.contains("a%b_c")`, RenderOptions{Dialect: DialectSQLite})
+	require.NoError(t, err)
+	require.Equal(t, []any{`"a%b_c"`}, stmt.Args)
 }
 
 func TestRenderAllRejectsUnsupportedPredicate(t *testing.T) {

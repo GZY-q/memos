@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/labstack/echo/v5"
 	"github.com/pkg/errors"
 
+	"github.com/usememos/memos/server/audit"
 	"github.com/usememos/memos/server/auth"
 	"github.com/usememos/memos/store"
 )
@@ -109,13 +111,16 @@ func handleExportMe(c *echo.Context, storeInstance *store.Store, authenticator *
 		format = exportFormatJSON
 	}
 
+	clientIP := clientIPFromRequest(c.Request().Header, c.Request().RemoteAddr)
 	switch format {
 	case exportFormatJSON:
+		recordExportAudit(ctx, user, clientIP, format, len(payload.Memos), len(payload.Attachments))
 		c.Response().Header().Set(echo.HeaderContentType, "application/json; charset=utf-8")
 		c.Response().Header().Set(echo.HeaderContentDisposition, exportContentDisposition(user.Username, "json"))
 		c.Response().Header().Set(echo.HeaderCacheControl, "private, no-store")
 		return c.JSON(http.StatusOK, payload)
 	case exportFormatMarkdown:
+		recordExportAudit(ctx, user, clientIP, format, len(payload.Memos), len(payload.Attachments))
 		body := renderExportMarkdown(payload)
 		c.Response().Header().Set(echo.HeaderContentType, "text/markdown; charset=utf-8")
 		c.Response().Header().Set(echo.HeaderContentDisposition, exportContentDisposition(user.Username, "md"))
@@ -124,6 +129,23 @@ func handleExportMe(c *echo.Context, storeInstance *store.Store, authenticator *
 	default:
 		return echo.NewHTTPError(http.StatusBadRequest, "unsupported format; use json or markdown")
 	}
+}
+
+// recordExportAudit writes a successful export audit event with non-sensitive counts.
+func recordExportAudit(ctx context.Context, user *store.User, clientIP, format string, memoCount, attachmentCount int) {
+	audit.Log(ctx, audit.Event{
+		ActorUserID:   user.ID,
+		ActorUsername: user.Username,
+		Action:        exportAuditAction,
+		Procedure:     exportAuditProcedure,
+		ClientIP:      clientIP,
+		Outcome:       audit.OutcomeSuccess,
+		Detail: map[string]string{
+			"format":           format,
+			"memo_count":       strconv.Itoa(memoCount),
+			"attachment_count": strconv.Itoa(attachmentCount),
+		},
+	})
 }
 
 // exportContentDisposition builds a download filename for the current user.

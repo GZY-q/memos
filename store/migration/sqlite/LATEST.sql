@@ -151,3 +151,24 @@ CREATE TABLE user_identity (
 );
 
 CREATE INDEX idx_user_identity_user_id ON user_identity(user_id);
+
+-- memo full-text search (trigram keeps content.contains substring semantics)
+CREATE VIRTUAL TABLE memo_fts USING fts5(
+  content,
+  content_rowid = 'id',
+  content = 'memo',
+  tokenize = 'trigram'
+);
+
+CREATE TRIGGER memo_fts_ai AFTER INSERT ON memo BEGIN
+  INSERT INTO memo_fts (rowid, content) VALUES (new.id, new.content);
+END;
+
+CREATE TRIGGER memo_fts_ad AFTER DELETE ON memo BEGIN
+  INSERT INTO memo_fts (memo_fts, rowid, content) VALUES ('delete', old.id, old.content);
+END;
+
+CREATE TRIGGER memo_fts_au AFTER UPDATE OF content ON memo BEGIN
+  INSERT INTO memo_fts (memo_fts, rowid, content) VALUES ('delete', old.id, old.content);
+  INSERT INTO memo_fts (rowid, content) VALUES (new.id, new.content);
+END;
