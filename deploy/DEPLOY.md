@@ -1,5 +1,7 @@
 # Memos 云端 Docker Compose 部署
 
+给 AI / 自动化脚本使用的完整执行版见 **[AI_DEPLOY.md](./AI_DEPLOY.md)**。
+
 本机未安装 Docker，镜像需在云服务器上构建/拉取。二进制产物在 `../build/`，适合不用 Docker 的场景。
 
 ## 选哪种方式
