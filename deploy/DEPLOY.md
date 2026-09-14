@@ -14,6 +14,34 @@
 
 > `scripts/Dockerfile` **不会**在镜像内编译前端（`.dockerignore` 排除 `web/`）。构建镜像前必须先在仓库根执行 `cd web && pnpm install && pnpm release`。
 
+## 国内网络（强烈建议先配）
+
+不配加速时，`docker pull`、`go mod`、`pnpm install`、`git clone` 都可能失败。
+
+```bash
+# Docker 镜像
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json >/dev/null <<'EOF'
+{
+  "registry-mirrors": [
+    "https://docker.m.daocloud.io",
+    "https://dockerproxy.net",
+    "https://docker.1ms.run",
+    "https://mirror.ccs.tencentyun.com"
+  ]
+}
+EOF
+sudo systemctl restart docker
+
+# Go / npm
+export GOPROXY=https://goproxy.cn,direct
+npm config set registry https://registry.npmmirror.com
+pnpm config set registry https://registry.npmmirror.com
+```
+
+`deploy/.env.example` 已含 `GOPROXY=https://goproxy.cn,direct`，会传入 `docker build`。  
+GitHub 拉不动时，用本机 `rsync` 把整个仓库（排除 `.git`、`web/node_modules`、`deploy/data`）传到服务器。完整步骤见 [AI_DEPLOY.md](./AI_DEPLOY.md) §1.4、§2.2。
+
 ## 快速部署（本 fork）
 
 在服务器上：

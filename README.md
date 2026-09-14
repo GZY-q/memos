@@ -54,13 +54,14 @@ Official Docker Hub image `neosmemo/memos` does **not** include this fork’s fe
 
 ```bash
 git clone <this-repo-url> memos && cd memos
+# China mainland: configure Docker mirrors + GOPROXY + npmmirror first — see deploy/AI_DEPLOY.md §1.4
 cd web && pnpm install && pnpm release && cd ..   # required before docker build
-cd deploy && cp .env.example .env
+cd deploy && cp .env.example .env                 # GOPROXY defaults to goproxy.cn
 docker compose -f docker-compose.build.yml up -d --build
 # open http://<server>:5230
 ```
 
-Full steps (HTTPS, backup, AI-agent script): [`deploy/AI_DEPLOY.md`](./deploy/AI_DEPLOY.md) · [`deploy/DEPLOY.md`](./deploy/DEPLOY.md).
+Full steps (China network, HTTPS, backup, AI-agent script): [`deploy/AI_DEPLOY.md`](./deploy/AI_DEPLOY.md) · [`deploy/DEPLOY.md`](./deploy/DEPLOY.md).
 
 ### Development (this fork)
 

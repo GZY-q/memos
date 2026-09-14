@@ -3,7 +3,8 @@
 #   cd web && pnpm install && pnpm release && cd ..   # 必须先编前端
 #   cd deploy
 #   docker compose -f docker-compose.build.yml up -d --build
-# 注意: 整个仓库需在服务器上（git clone 或 rsync）；不要用官方镜像 neosmemo/memos。
+# 国内网络：默认 GOPROXY=goproxy.cn（见 .env.example）；Docker 镜像加速见 AI_DEPLOY.md §1.4
+# 不要用官方镜像 neosmemo/memos。
 
 services:
   memos:
@@ -13,6 +14,7 @@ services:
       args:
         VERSION: "${MEMOS_VERSION:-dev}"
         COMMIT: "${MEMOS_COMMIT:-unknown}"
+        GOPROXY: "${GOPROXY:-https://goproxy.cn,direct}"
     image: memos:${MEMOS_VERSION:-dev}
     container_name: memos
     restart: unless-stopped

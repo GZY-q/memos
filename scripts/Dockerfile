@@ -4,6 +4,11 @@ WORKDIR /backend-build
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates
 
+# China / restricted networks: override at build time, e.g.
+#   --build-arg GOPROXY=https://goproxy.cn,direct
+ARG GOPROXY=https://proxy.golang.org,direct
+ENV GOPROXY=${GOPROXY}
+
 # Copy go mod files and download dependencies (cached layer)
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod \
