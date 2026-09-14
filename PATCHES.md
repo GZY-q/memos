@@ -326,6 +326,27 @@ Outside `modules/navigation/` for TTS only:
 - **Upstream risk**: medium (new table + Driver interface methods). Additive interceptor;
   greppable `msg=audit` lines remain.
 
+## Patch 12: navigation module UI split
+
+`NavigationPage.tsx` (1748 lines) extracted into sibling modules under
+`web/src/modules/navigation/` (SearchSpotlight, NavGroupSection, NavCardTile,
+dialogs, DnD/keyboard/clipboard/engines/bookmark hooks). Page shell is ~358
+lines. Pure logic files were already separate.
+
+- **Reason**: maintainability without behavior change.
+- **Upstream risk**: low if kept inside the module directory (PATCHES.md only
+  tracks edits outside it).
+
+## Patch 13: admin audit query API
+
+- `server/router/api/v1/audit_handler.go` — `GET /api/v1/audit-logs` for
+  `RoleAdmin` only (limit/action/outcome/username filters).
+- `ColumnGrid.tsx` — `content-visibility: auto` on packed memo tiles.
+
+- **Reason**: operators need to query the audit trail without SQL; large grids
+  skip offscreen paint.
+- **Upstream risk**: low. Native Echo route like export; not a PublicMethod.
+
 ## Repo hygiene notes (local only)
 
 Local runtime artifacts must stay out of git:

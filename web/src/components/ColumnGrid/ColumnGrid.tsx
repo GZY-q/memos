@@ -299,12 +299,19 @@ function ColumnGrid<T>({
       )}
       {items.map((item) => {
         const key = getKey(item);
+        // Skip layout/paint for offscreen tiles. Intrinsic size uses the same
+        // estimate as column packing so scroll height stays stable.
+        const intrinsic = estimateHeight ? Math.max(80, Math.round(estimateHeight(item, { columnWidth: maxColumnWidth ?? 400 }))) : 240;
         return (
           <div
             key={key}
             ref={getItemRef(key)}
             className="absolute top-0 left-0 transition-transform duration-200 ease-out motion-reduce:transition-none"
-            style={{ willChange: "transform" }}
+            style={{
+              willChange: "transform",
+              contentVisibility: "auto",
+              containIntrinsicBlockSize: `auto ${intrinsic}px`,
+            }}
           >
             {renderItem(item)}
           </div>

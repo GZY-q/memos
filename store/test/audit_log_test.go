@@ -50,4 +50,12 @@ func TestAuditLogCreateAndList(t *testing.T) {
 	require.NotEmpty(t, deniedOnly)
 	require.Equal(t, "bob", deniedOnly[0].ActorUsername)
 	require.Equal(t, denied.ID, deniedOnly[0].ID)
+
+	username := "alice"
+	byUsername, err := ts.ListAuditLogs(ctx, &store.FindAuditLog{ActorUsername: &username})
+	require.NoError(t, err)
+	require.NotEmpty(t, byUsername)
+	for _, row := range byUsername {
+		require.Equal(t, "alice", row.ActorUsername)
+	}
 }

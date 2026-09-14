@@ -33,6 +33,9 @@ type FindAuditLog struct {
 	ID *int32
 	// ActorUserID selects events for one user.
 	ActorUserID *int32
+	// ActorUsername selects events recorded under an exact username, including
+	// failed sign-in attempts that never resolved a user id.
+	ActorUsername *string
 	// Action selects events with an exact action id.
 	Action *string
 	// Outcome selects success / denied / error.

@@ -47,6 +47,9 @@ func (d *DB) ListAuditLogs(ctx context.Context, find *store.FindAuditLog) ([]*st
 	if find.ActorUserID != nil {
 		where, args = append(where, "`actor_user_id` = ?"), append(args, *find.ActorUserID)
 	}
+	if find.ActorUsername != nil {
+		where, args = append(where, "`actor_username` = ?"), append(args, *find.ActorUsername)
+	}
 	if find.Action != nil {
 		where, args = append(where, "`action` = ?"), append(args, *find.Action)
 	}

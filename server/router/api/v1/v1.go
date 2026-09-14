@@ -196,6 +196,8 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 	RegisterSSERoutes(gwGroup, s.SSEHub, s.Store, s.Secret)
 	// Authenticated backup export for the current user (not a PublicMethod).
 	RegisterExportRoutes(gwGroup, s.Store, s.Secret)
+	// Instance-admin read-only audit query (not a PublicMethod).
+	RegisterAuditLogRoutes(gwGroup, s.Store, s.Secret)
 	handler := echo.WrapHandler(gwMux)
 
 	gwGroup.Any("/api/v1/*", handler)
