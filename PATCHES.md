@@ -293,11 +293,31 @@ Outside `modules/navigation/` for TTS only:
   is unchanged.
 - `store/migration/mysql/0.31/08__memo_content_ngram.sql` + `LATEST.sql` —
   InnoDB FULLTEXT ngram index (idempotent via information_schema + PREPARE).
-  LIKE is intentionally not rewritten to MATCH AGAINST (boolean-mode semantics
-  differ); the index only prepares a future MATCH path.
+  `content.contains` with ≥2 runes now compiles to
+  `MATCH(...) AGAINST(? IN BOOLEAN MODE)` as a boolean-mode phrase; shorter
+  needles and prefix/suffix keep LIKE.
 
 - **Reason**: substring search was a full-table LIKE scan.
 - **Upstream risk**: medium (migration files + LATEST + filter renderer).
+
+## Patch 15: MySQL ngram MATCH path + related-text filter fields
+
+- `internal/filter/render.go` — MySQL `content.contains` (≥2 runes) compiles to
+  `MATCH(memo.content) AGAINST(? IN BOOLEAN MODE)` against `idx_memo_content_ngram`;
+  shorter needles and prefix/suffix keep LIKE. New `FieldKindRelatedTextMatch`
+  renders `attachment_filename` / `comment` text matches as correlated EXISTS
+  subqueries (no outer JOIN).
+- `internal/filter/schema.go` — CEL variables `attachment_filename` and
+  `comment` (contains/startsWith/endsWith only; comparison, matches(), size()
+  rejected).
+- `internal/filter/README.md` — documents both indexed contains paths and
+  related-text fields.
+
+- **Reason**: adopt the prepared MySQL FULLTEXT index; let filters search
+  attachment filenames and comment bodies without a schema change.
+- **Upstream risk**: medium (filter renderer + schema). Nested CEL syntax
+  `attachment.filename.contains` was rejected as costlier than a flat
+  identifier with EXISTS.
 
 
 ## Patch 8: auth rate limit + user export + offline shell
@@ -355,6 +375,106 @@ lines. Pure logic files were already separate.
 - **Reason**: query the audit trail without curl/SQL.
 - **Upstream risk**: low. Additive admin section; az locale filled from English
   for the new keys so the locale-alignment test stays green.
+
+## Patch 15: offline draft queue (wave2)
+
+New self-contained modules under `web/src/lib/offline/` (idb helper, pure
+queue logic, IndexedDB store, `useOfflineDraftQueue`). Upstream touchpoints:
+
+- `web/src/main.tsx` — mount `useOfflineDraftQueue()` next to
+  `useLiveMemoRefresh()` so the queue drains on `online`.
+- `web/src/components/MemoEditor/hooks/useMemoSave.ts` — network-shaped save
+  failures enqueue a local draft (toast「已保存到本地草稿」) instead of a hard error.
+- `web/src/components/MemoEditor/hooks/useAutoSave.ts` — dual-write drafts into
+  IndexedDB alongside the existing localStorage `cacheService`.
+- `web/src/components/MemoEditor/Toolbar/EditorToolbar.tsx` — offline badge.
+- `web/src/hooks/useOnlineStatus.ts` — shared online/offline listener.
+- `web/public/sw.js` — unchanged; already never caches `/api/` GET responses.
+
+- **Reason**: keep in-progress memos recoverable offline and auto-submit after reconnect.
+- **Upstream risk**: low-medium. `useMemoSave` catch-path is additive; rebase
+  conflicts only if upstream rewrites the save transaction.
+
+## Patch 16: TTS audio cache (wave2)
+
+- `web/src/lib/tts/audioCache.ts` — FNV-1a content hash + LRU eviction (50
+  entries / 50MB).
+- `web/src/lib/tts/idbAudioCache.ts` — IndexedDB blob store.
+- `web/src/hooks/useTTSPlayer.ts` — play path checks the cache before
+  `ttsService.synthesize` and writes back on miss.
+
+- **Reason**: skip redundant synthesize RPCs for repeated plays of the same memo text.
+- **Upstream risk**: low. Only the TTS `start` IO path changed; upstream has no TTS.
+
+## Patch 17: audit page time range + pagination + CSV (wave2)
+
+- `store/audit.go` + `store/db/{sqlite,postgres,mysql}/audit.go` —
+  `FindAuditLog.Offset` and `SinceTs` with `LIMIT/OFFSET` and `created_ts >=`.
+- `server/router/api/v1/audit_handler.go` — `offset` and `since` query params
+  (pure `parseAuditLogQueryParams` for tests).
+- `web/src/components/Settings/AuditLogSection.tsx` — today/7d/all range,
+  offset paging (50/page), client-side CSV export via `auditCsv.ts`.
+- Locales: `en.json`, `zh-Hans.json` additive keys under
+  `editor.offline-*` and `setting.audit-logs.range-*` / `export-csv` / paging.
+
+- **Reason**: operators need bounded pages and offline export of the audit trail.
+- **Upstream risk**: low. All fields/params additive; existing list queries unchanged.
+
+## Patch 18: navigation config local-first storage (wave2)
+
+Module-internal (no new upstream files). The navigation config's primary
+persistence moved off the ARCHIVED+PRIVATE memo onto browser storage:
+
+- `web/src/modules/navigation/localStore.ts` — IndexedDB (`nav-config-store`)
+  with localStorage fallback (`nav-config-local`, mirroring the legacy
+  `nav-config-cache` key). Higher-`rev` wins when both backends have a copy.
+- `controller.ts` — read path is local-first: prefer local, merge with the memo
+  only when the memo `rev` is strictly newer (`mergeNavConfigs`), migrate a
+  memo-only config into local, seed locally when the RPC is down. Write path
+  always writes local, then upserts the memo backup only when
+  `buildConfigContent(config).length <= NAV_CONFIG_MEMO_CONTENT_LIMIT` (8192,
+  the server default). Oversized configs save locally and return
+  `memoSync: "skipped-too-large"`; a failed backup RPC returns `"failed"` and
+  never rolls back the local save.
+- `NavigationPage` — persistent `nav-local-only-note` hint when the last save
+  skipped the memo backup; offline note when `memoSync === "failed"`.
+- `useBookmarkImport` — large imports are no longer refused at 65k; only a 2MB
+  local soft ceiling blocks, and the persist path decides memo-backup skip.
+- `types.ts` — `NAV_CONFIG_CONTENT_LIMIT` (65000) replaced by
+  `NAV_CONFIG_MEMO_CONTENT_LIMIT` (8192) + `NAV_CONFIG_LOCAL_SOFT_LIMIT` (2MB).
+
+- **Reason**: the server memo content cap (default 8192) made large bookmark
+  walls unsaveable. Local storage is multi-MB and always available; the memo
+  is an optional cross-device sync backup.
+- **Upstream risk**: none outside the module. Cross-device sync still works via
+  the memo when the body fits; oversized walls are device-local until trimmed
+  or the instance `contentLengthLimit` is raised.
+- **Tests**: `web/tests/navigation-config.test.ts`,
+  `navigation-local-store.test.ts`, `navigation-local-only-note.test.tsx`,
+  `navigation-page.test.tsx`.
+
+## Patch 19: flow-list contain threshold + virtualization evaluation (wave2)
+
+- `web/src/components/PagedMemoList/flowContain.ts` — `FLOW_CONTAIN_THRESHOLD`
+  (40) and `flowCardContainStyle(itemCount)`. Flow cards always keep
+  `content-visibility: auto` + `contain-intrinsic-size: auto 240px`; at/above
+  the threshold they also get `contain: content`.
+- `PagedMemoList.tsx` flow branch uses the helper instead of an inline style.
+- ColumnGrid already applied `content-visibility: auto` on every packed tile
+  (Patch 13) — unchanged.
+
+**Virtualization evaluation**: full windowed virtualization (mount/unmount by
+viewport) is intentionally **not** adopted. ColumnGrid's absolute packing
+depends on measuring every card once to assign columns and running y-offsets;
+unmounting offscreen tiles would force estimate-only layouts and thrash on
+scroll. Native `content-visibility: auto` already skips offscreen layout and
+paint while keeping DOM (and therefore drag state, focus, and measurement)
+intact. Navigation cards use the same trick via `.nav-page-card-shell`. The
+threshold switch adds a cheap `contain: content` on large flow lists without
+changing mount behaviour.
+
+- **Upstream risk**: low. One additive helper + one style swap in the flow
+  branch. Tests: `web/tests/memo-list-contain.test.ts`.
 
 ## Repo hygiene notes (local only)
 

@@ -169,6 +169,8 @@ func (r *renderer) renderComparison(cond *ComparisonCondition) (renderResult, er
 			return r.renderJSONBoolComparison(field, cond.Operator, cond.Right)
 		case FieldKindJSONExists:
 			return r.renderJSONExistsComparison(field, cond.Operator, cond.Right)
+		case FieldKindRelatedTextMatch:
+			return renderResult{}, errors.Errorf("field %q only supports contains/startsWith/endsWith", field.Name)
 		case FieldKindScalar:
 			return r.renderScalarComparison(field, cond.Operator, cond.Right)
 		default:
@@ -276,6 +278,9 @@ func (r *renderer) renderFunctionComparison(fn *FunctionValue, op ComparisonOper
 		if !ok {
 			return renderResult{}, errors.Errorf("invalid alias %q", fieldArg.Name)
 		}
+	}
+	if field.Kind == FieldKindRelatedTextMatch {
+		return renderResult{}, errors.Errorf("size() does not support field %q", field.Name)
 	}
 
 	value, err := expectNumericLiteral(right)
@@ -537,6 +542,11 @@ func (r *renderer) renderTextMatch(cond *TextMatchCondition) (renderResult, erro
 	if !ok {
 		return renderResult{}, errors.Errorf("unknown field %q", cond.Field)
 	}
+	// Related tables (attachment filename, comment content) have no column on
+	// the outer memo row; emit a correlated EXISTS instead of LIKE on a column.
+	if field.Kind == FieldKindRelatedTextMatch {
+		return r.renderRelatedTextMatch(field, cond)
+	}
 	// SQLite: route content.contains through the FTS5 trigram index when the
 	// needle is long enough for trigrams to help. Prefix/suffix and short
 	// needles keep the portable LIKE path.
@@ -548,6 +558,18 @@ func (r *renderer) renderTextMatch(cond *TextMatchCondition) (renderResult, erro
 			),
 		}, nil
 	}
+	// MySQL: route content.contains through the InnoDB FULLTEXT ngram index
+	// (idx_memo_content_ngram). The ngram parser defaults to token size 2, so
+	// needles shorter than 2 runes cannot be tokenized; those (and
+	// prefix/suffix, which the ngram phrase query cannot express) keep LIKE.
+	if r.dialect == DialectMySQL && field.Name == "content" && cond.Mode == TextMatchContains && utf8.RuneCountInString(cond.Value) >= minMySQLNgramNeedleRunes {
+		return renderResult{
+			sql: fmt.Sprintf(
+				"MATCH(`memo`.`content`) AGAINST(%s IN BOOLEAN MODE)",
+				r.addArg(mysqlNgramMatchQuery(cond.Value)),
+			),
+		}, nil
+	}
 	column := field.columnExpr(r.dialect)
 	pattern := likePattern(cond.Mode, cond.Value)
 	return renderResult{sql: r.foldedLike(column, pattern)}, nil
@@ -556,10 +578,62 @@ func (r *renderer) renderTextMatch(cond *TextMatchCondition) (renderResult, erro
 // minFTSNeedleRunes is the shortest needle the trigram FTS path will accept.
 const minFTSNeedleRunes = 3
 
+// minMySQLNgramNeedleRunes is the shortest needle the InnoDB ngram FULLTEXT
+// path will accept. MySQL's default ngram_token_size is 2, so a single rune
+// cannot form a token.
+const minMySQLNgramNeedleRunes = 2
+
 // ftsMatchQuery wraps a user needle as a single FTS5 phrase so special
 // operators (*, NEAR, column filters, …) are treated as literal text.
 func ftsMatchQuery(value string) string {
 	return `"` + strings.ReplaceAll(value, `"`, `""`) + `"`
+}
+
+// mysqlNgramMatchQuery wraps a user needle as a single InnoDB FULLTEXT ngram
+// boolean-mode phrase so special operators (+, -, *, ~, …) are treated as
+// literal text. Internal double quotes are stripped: MySQL boolean mode has
+// no escape for a quote inside a phrase the way FTS5 doubles them.
+func mysqlNgramMatchQuery(value string) string {
+	return `"` + strings.ReplaceAll(value, `"`, "") + `"`
+}
+
+// renderRelatedTextMatch builds a correlated EXISTS for FieldKindRelatedTextMatch.
+// attachment.filename searches the attachment table; comment searches memo rows
+// linked as COMMENT via memo_relation. Both reuse foldedLike so case-folding
+// and LIKE-escaping match the portable content path.
+func (r *renderer) renderRelatedTextMatch(field Field, cond *TextMatchCondition) (renderResult, error) {
+	pattern := likePattern(cond.Mode, cond.Value)
+	outerMemo := qualifyColumn(r.dialect, Column{Table: "memo", Name: "id"})
+	switch field.Name {
+	case "attachment_filename":
+		return renderResult{
+			sql: fmt.Sprintf(
+				"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s)",
+				qualifyTable(r.dialect, "attachment"),
+				qualifyColumn(r.dialect, Column{Table: "attachment", Name: "memo_id"}),
+				outerMemo,
+				r.foldedLike(qualifyColumn(r.dialect, field.Column), pattern),
+			),
+		}, nil
+	case "comment":
+		return renderResult{
+			sql: fmt.Sprintf(
+				"EXISTS (SELECT 1 FROM %s AS %s JOIN %s AS %s ON %s = %s AND %s = 'COMMENT' WHERE %s = %s AND %s)",
+				qualifyTable(r.dialect, "memo"),
+				qualifyTable(r.dialect, "comment_memo"),
+				qualifyTable(r.dialect, "memo_relation"),
+				qualifyTable(r.dialect, "comment_rel"),
+				qualifyColumn(r.dialect, Column{Table: "comment_rel", Name: "related_memo_id"}),
+				qualifyColumn(r.dialect, Column{Table: "comment_memo", Name: "id"}),
+				qualifyColumn(r.dialect, Column{Table: "comment_rel", Name: "type"}),
+				qualifyColumn(r.dialect, Column{Table: "comment_rel", Name: "memo_id"}),
+				outerMemo,
+				r.foldedLike(qualifyColumn(r.dialect, field.Column), pattern),
+			),
+		}, nil
+	default:
+		return renderResult{}, errors.Errorf("unsupported related text field %q", field.Name)
+	}
 }
 
 func (r *renderer) renderRegex(cond *RegexCondition) (renderResult, error) {
@@ -924,6 +998,16 @@ func qualifyColumn(d DialectName, col Column) string {
 		return fmt.Sprintf("%s.%s", col.Table, col.Name)
 	default:
 		return fmt.Sprintf("`%s`.`%s`", col.Table, col.Name)
+	}
+}
+
+// qualifyTable quotes a bare table identifier for use in FROM/JOIN clauses.
+func qualifyTable(d DialectName, table string) string {
+	switch d {
+	case DialectPostgres:
+		return table
+	default:
+		return "`" + table + "`"
 	}
 }
 

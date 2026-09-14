@@ -258,7 +258,8 @@
     "version": "版本",
     "visibility": "可见性",
     "views": "视图",
-    "yourself": "您自己"
+    "yourself": "您自己",
+    "journal": "日记"
   },
   "locale-picker": {
     "no-language-feedback": "未找到语言？ 提交反馈"
@@ -347,7 +348,10 @@
       "trigger": "录制音频",
       "unsupported": "不支持录音",
       "unsupported-description": "此浏览器无法录制备忘录编辑器中的音频。"
-    }
+    },
+    "offline-draft-saved": "已保存到本地草稿",
+    "offline-queue-flushed": "本地草稿已提交",
+    "offline-badge": "离线"
   },
   "inbox": {
     "failed-to-load": "加载失败",
@@ -1168,7 +1172,26 @@
       "column-actor": "操作者",
       "column-action": "操作",
       "column-ip": "IP",
-      "column-outcome": "结果"
+      "column-outcome": "结果",
+      "range": "时间范围",
+      "range-today": "今天",
+      "range-7d": "最近 7 天",
+      "range-all": "全部",
+      "export-csv": "导出 CSV",
+      "prev": "上一页",
+      "next": "下一页",
+      "page": "第 {{page}} 页"
+    },
+    "import": {
+      "label": "导入",
+      "description": "从 Flomo、CSV 导出或 Obsidian Markdown 文件夹导入备忘录。",
+      "formats": "支持：Flomo 导出 JSON（content / created_at）、含 content 列的 CSV、.md 文件，以及 Markdown 笔记 zip 包。",
+      "choose-file": "选择文件",
+      "parsing": "正在读取文件…",
+      "progress": "已导入 {{completed}}/{{total}}（失败 {{failed}}）",
+      "finished": "已完成导入 {{count}} 条。",
+      "success": "成功导入 {{count}} 条。",
+      "partial": "导入成功 {{created}} 条，失败 {{failed}} 条。"
     }
   },
   "space": {
@@ -1226,5 +1249,17 @@
     "select-visibility": "浏览权限",
     "tags": "标签",
     "upload-attachment": "上传附件"
+  },
+  "journal": {
+    "today": "今天",
+    "day-count": "本日 {{count}} 条",
+    "previous-day": "前一天",
+    "next-day": "后一天",
+    "go-to-today": "回到今天",
+    "composer-placeholder": "记录这一天…",
+    "empty": "这一天还没有记录，从上方开始写吧。",
+    "loading": "正在加载这一天…",
+    "load-error": "无法加载这一天。",
+    "retry": "重试"
   }
 }

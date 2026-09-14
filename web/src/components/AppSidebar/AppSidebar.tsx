@@ -13,6 +13,7 @@ import {
   ListIcon,
   type LucideIcon,
   MenuIcon,
+  NotebookPenIcon,
   PaperclipIcon,
   SearchIcon,
   SquarePenIcon,
@@ -375,6 +376,7 @@ const RouteSidebarContent = () => {
   }
   if (kind === "views") return <ViewsSection manageActive />;
   if (kind === "calendar") return <CollectionSidebarContent context="home" showStatistics={false} />;
+  if (kind === "journal") return <CollectionSidebarContent context="home" showStatistics={false} />;
   if (kind === "map") return <CollectionSidebarContent context="home" showStatistics={false} scopeFilter={MAP_MEMO_FILTER} />;
   if (kind === "attachments") return <AttachmentsSidebarContent />;
   if (kind === "inbox") return <InboxSidebarContent />;
@@ -500,6 +502,13 @@ const GlobalNavigation = () => {
           icon: EarthIcon,
           active: exploreActive,
           onClick: () => navigateToScope("explore"),
+        },
+        {
+          id: "journal",
+          label: t("common.journal"),
+          path: collectionPathForLocation(ROUTES.JOURNAL, location.pathname),
+          icon: NotebookPenIcon,
+          active: routeKind === "journal",
         },
         {
           id: "attachments",

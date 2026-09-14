@@ -5,6 +5,7 @@ import {
   CogIcon,
   DatabaseIcon,
   HeartHandshakeIcon,
+  ImportIcon,
   KeyIcon,
   KeyRoundIcon,
   LibraryIcon,
@@ -20,6 +21,7 @@ import { type ComponentType } from "react";
 import AccessTokenSection from "@/components/Settings/AccessTokenSection";
 import AISection from "@/components/Settings/AISection";
 import AuditLogSection from "@/components/Settings/AuditLogSection";
+import ImportSection from "@/components/Settings/ImportSection";
 import InstanceSection from "@/components/Settings/InstanceSection";
 import MemberSection from "@/components/Settings/MemberSection";
 import MemoRelatedSettings from "@/components/Settings/MemoRelatedSettings";
@@ -48,6 +50,7 @@ export type SettingSectionKey =
   | "sso"
   | "tags"
   | "ai"
+  | "import"
   | "resource-stats"
   | "audit-logs";
 
@@ -156,6 +159,13 @@ export const SETTINGS_SECTIONS: SettingSectionDefinition[] = [
     icon: HeartHandshakeIcon,
     component: AISection,
     preloadSettingKeys: [InstanceSetting_Key.AI],
+  },
+  {
+    key: "import",
+    scope: "basic",
+    labelKey: "setting.import.label",
+    icon: ImportIcon,
+    component: ImportSection,
   },
   {
     key: "resource-stats",

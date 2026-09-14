@@ -18,6 +18,8 @@ export interface NavStrings {
   degradedTitle: string;
   degradedBody: string;
   seededNote: string;
+  /** Shown when the config is too large for the memo backup; local save still succeeded. */
+  localOnlyNote: string;
   retry: string;
   saving: string;
   saveFailed: string;
@@ -102,6 +104,7 @@ const STRINGS: Record<"zh" | "en", NavStrings> = {
     degradedTitle: "离线缓存模式",
     degradedBody: "无法连接服务，当前展示本地缓存的配置，改动不会保存。",
     seededNote: "首次访问已写入默认配置（一条归档 + 私密备忘）。",
+    localOnlyNote: "配置已保存到本机；因内容超出备忘上限，未写入同步备份。",
     retry: "重试",
     saving: "保存中…",
     saveFailed: "保存失败：处于离线模式，改动未保存。",
@@ -185,6 +188,7 @@ const STRINGS: Record<"zh" | "en", NavStrings> = {
     degradedTitle: "Offline cache",
     degradedBody: "The service is unreachable; showing the locally cached config. Edits are not saved.",
     seededNote: "First visit: wrote the default config (an archived, private memo).",
+    localOnlyNote: "Saved on this device only — the config exceeds the memo backup size limit.",
     retry: "Retry",
     saving: "Saving…",
     saveFailed: "Save failed: offline mode, changes were not saved.",

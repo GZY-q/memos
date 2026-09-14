@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ttsService } from "@/components/MemoEditor/services/ttsService";
 import { type TTSPlayerIO, type TTSPlayerState, TTSPlayerStore, type TTSQueueItem } from "@/hooks/ttsPlayerStore";
+import { getCachedTtsAudio, putCachedTtsAudio } from "@/lib/tts/idbAudioCache";
 import { extractSpeechText } from "@/utils/speech-text";
 
 export type TTSPlaybackStatus = TTSPlayerState["status"];
@@ -9,7 +10,15 @@ export type TTSPlaybackStatus = TTSPlayerState["status"];
 const createBrowserPlayerIO = (): TTSPlayerIO => ({
   extractText: extractSpeechText,
   start: async (text, handlers) => {
-    const { audio, contentType } = await ttsService.synthesize(text);
+    // Prefer the IndexedDB audio cache so repeat plays skip the synthesize RPC.
+    let cached = await getCachedTtsAudio(text);
+    if (!cached) {
+      const synthesized = await ttsService.synthesize(text);
+      cached = { audio: synthesized.audio, contentType: synthesized.contentType };
+      // Fire-and-forget; eviction and IDB failures must not block playback.
+      void putCachedTtsAudio(text, synthesized.audio, synthesized.contentType);
+    }
+    const { audio, contentType } = cached;
     // Copy into a fresh ArrayBuffer so Blob accepts the typed array buffer.
     const bytes = Uint8Array.from(audio);
     const blob = new Blob([bytes.buffer], { type: contentType });

@@ -71,6 +71,28 @@ stmt, _ := engine.CompileToStatement(ctx, `has_task_list && visibility == "PUBLI
   metacharacters (`%`, `_`, `\`) escaped. Available on scalar string fields whose
   schema sets `SupportsContains` (memo `content`; attachment `filename`,
   `mime_type`).
+  - **Indexed contains paths** — long `content.contains` needles skip the
+    portable LIKE scan when an index can serve them:
+    - SQLite: needles with ≥3 runes compile to a phrase query against the
+      trigram FTS5 table `memo_fts` (`EXISTS (… MATCH …)`). Shorter needles
+      and prefix/suffix stay on `LIKE`.
+    - MySQL: needles with ≥2 runes compile to
+      `MATCH(memo.content) AGAINST(? IN BOOLEAN MODE)` against the InnoDB
+      ngram FULLTEXT index `idx_memo_content_ngram` (default
+      `ngram_token_size` is 2). The needle is wrapped as a boolean-mode
+      phrase so `+ - * " …` stay literal; internal `"` are stripped because
+      MySQL has no in-phrase quote escape. Shorter needles and
+      prefix/suffix stay on `LIKE`.
+    - Postgres: unchanged `ILIKE`; the optional `pg_trgm` GIN index can
+      accelerate that path without a render change.
+- **Related Text** — `attachment_filename.contains/startsWith/endsWith(x)`
+  matches memos that have an attachment whose filename matches; `comment.contains/startsWith/endsWith(x)`
+  matches memos with a COMMENT-related memo whose content matches. Both
+  render as a correlated `EXISTS` subquery (no outer JOIN, so multiple
+  matching attachments/comments cannot duplicate the memo row). Only text-match
+  functions are allowed: `==`, ordering, `matches()`, and `size()` are
+  rejected at parse time. Nested CEL syntax (`attachment.filename.contains`)
+  is intentionally not supported — the parser only accepts simple identifiers.
 - **Regex** — `field.matches("pattern")` renders to `~` (Postgres) or `REGEXP`
   (MySQL/SQLite). SQLite uses a Go-backed `regexp` function registered in
   `store/db/sqlite/functions.go`. Patterns are validated at compile time against

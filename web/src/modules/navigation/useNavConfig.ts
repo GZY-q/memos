@@ -40,12 +40,14 @@ export const useNavConfig = () => {
       return persistConfig(next, { config: prev?.config ?? null, memoName: prev?.memoName ?? null });
     },
     onSuccess: (result: PersistResult) => {
-      queryClient.setQueryData<NavConfigState>(navConfigKeys.state(), {
+      const next: NavConfigState = {
         config: result.config,
         memoName: result.memoName,
-        source: "memo",
-      });
-      latestStateRef.current = { config: result.config, memoName: result.memoName, source: "memo" };
+        source: result.memoSync === "synced" ? "memo" : "local",
+        memoSync: result.memoSync,
+      };
+      queryClient.setQueryData<NavConfigState>(navConfigKeys.state(), next);
+      latestStateRef.current = next;
     },
     onError: () => {
       // Drop any optimistic write and reload the last server truth.

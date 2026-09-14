@@ -1,5 +1,5 @@
 import { matchPath } from "react-router-dom";
-import { getProfileUsername, isCalendarRoute, isMemoScopeRoute, type MemoScope, resolveMemoScope } from "@/lib/memo-views";
+import { getProfileUsername, isCalendarRoute, isJournalRoute, isMemoScopeRoute, type MemoScope, resolveMemoScope } from "@/lib/memo-views";
 import { collectionPathForLocation, ROUTES, resolveCollectionRoute } from "@/router/routes";
 
 export type SidebarRouteKind =
@@ -7,6 +7,7 @@ export type SidebarRouteKind =
   | "profile"
   | "views"
   | "calendar"
+  | "journal"
   | "map"
   | "attachments"
   | "inbox"
@@ -29,6 +30,7 @@ export const getSidebarRouteKind = (path: string): SidebarRouteKind => {
   if (getProfileUsername(normalizedPath) !== undefined) return "profile";
   if (matchPath(ROUTES.VIEWS, normalizedPath)) return "views";
   if (isCalendarRoute(normalizedPath)) return "calendar";
+  if (isJournalRoute(normalizedPath)) return "journal";
   if (matchPath(ROUTES.MAP, normalizedPath)) return "map";
   if (matchPath(ROUTES.ATTACHMENTS, normalizedPath)) return "attachments";
   if (matchPath(ROUTES.INBOX, normalizedPath)) return "inbox";
@@ -48,9 +50,9 @@ export const getRouteActionPolicy = (path: string): RouteActionPolicy => {
   if (kind === "home" || kind === "explore") return { searchScope: "route-collection" };
   if (kind === "archived") return { searchScope: "user-collection" };
 
-  // Calendar and attachments browse the route collection but are not memo lists
-  // themselves, so a search leaves for the same collection's Home.
-  if (kind === "calendar" || kind === "map" || kind === "attachments") {
+  // Calendar, journal and attachments browse the route collection but are not
+  // Home itself, so a search leaves for the same collection's Home.
+  if (kind === "calendar" || kind === "journal" || kind === "map" || kind === "attachments") {
     return { searchScope: "route-collection", searchDestination: collectionPathForLocation(ROUTES.HOME, path) };
   }
 

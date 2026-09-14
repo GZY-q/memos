@@ -15,6 +15,9 @@ describe("sidebar route content", () => {
     ["/calendar", "calendar"],
     ["/calendar/2026/08", "calendar"],
     ["/Calendar/2026/08/02/", "calendar"],
+    ["/journal", "journal"],
+    ["/journal/2026-08-02", "journal"],
+    ["/Journal/", "journal"],
     ["/attachments", "attachments"],
     ["/Attachments/", "attachments"],
     ["/inbox", "inbox"],
@@ -46,7 +49,12 @@ describe("sidebar route content", () => {
     });
   });
 
-  it.each(["/attachments", "/calendar/2026/08/02"])("keeps the route scope when %s sends search to Home", (path) => {
+  it.each([
+    "/attachments",
+    "/calendar/2026/08/02",
+    "/journal",
+    "/journal/2026-08-02",
+  ])("keeps the route scope when %s sends search to Home", (path) => {
     expect(getRouteActionPolicy(path)).toEqual({
       searchScope: "route-collection",
       searchDestination: "/",

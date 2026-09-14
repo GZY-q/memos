@@ -1,7 +1,8 @@
-import { CheckIcon, CornerDownLeftIcon, LoaderIcon } from "lucide-react";
+import { CheckIcon, CornerDownLeftIcon, LoaderIcon, WifiOffIcon } from "lucide-react";
 import type { FC } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { cn } from "@/lib/utils";
 import type { Location, Visibility } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
@@ -42,6 +43,7 @@ export const EditorToolbar: FC<EditorToolbarProps> = ({
 }) => {
   const t = useTranslate();
   const { actions, dispatch } = useEditorContext();
+  const isOnline = useOnlineStatus();
   // Subscribe to narrow/derived slices so typing (which only changes content)
   // doesn't re-render the toolbar or the heavy InsertMenu it hosts. `valid`
   // flips only on empty↔non-empty / loading transitions, not per keystroke.
@@ -101,6 +103,16 @@ export const EditorToolbar: FC<EditorToolbarProps> = ({
           onInsertImages={onInsertImages}
         />
         <VisibilitySelector value={visibility} space={space} onChange={handleVisibilityChange} />
+        {!isOnline && (
+          <span
+            data-testid="editor-offline-badge"
+            className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300"
+            title={t("editor.offline-badge")}
+          >
+            <WifiOffIcon className="size-3" />
+            {t("editor.offline-badge")}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-row justify-end items-center gap-2">

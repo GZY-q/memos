@@ -2,7 +2,12 @@
  * Public surface of the navigation module.
  *
  * Everything the feature owns lives under `modules/navigation/`; the only
- * upstream edits are the three documented in `PATCHES.md`.
+ * upstream edits are those documented in `PATCHES.md` (route + sidebar).
+ *
+ * Config persistence is local-first (`localStore.ts`: IndexedDB with a
+ * localStorage fallback); the ARCHIVED+PRIVATE memo in `storage.ts` is an
+ * optional cross-device backup, skipped when the body exceeds the server
+ * content cap.
  *
  * Two import rules keep the bundle honest:
  * - `NavigationPage` is NOT re-exported here. The router lazy-imports it by path
@@ -19,6 +24,7 @@ export * from "./clipboard";
 export * from "./controller";
 export * from "./editor";
 export * from "./i18n";
+export * from "./localStore";
 export * from "./merge";
 export * from "./reorder";
 export * from "./searchEngines";

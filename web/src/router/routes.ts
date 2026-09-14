@@ -8,6 +8,7 @@ export const ROUTES = {
   INBOX: "/inbox",
   ARCHIVED: "/archived",
   CALENDAR: "/calendar",
+  JOURNAL: "/journal",
   MAP: "/map",
   NAVIGATION: "/navigation",
   VIEWS: "/views",
@@ -24,13 +25,23 @@ export const ROUTES = {
 /** Router pattern for the calendar: month and day are optional so `/calendar` can redirect. */
 export const CALENDAR_ROUTE_PATTERN = `${ROUTES.CALENDAR}/:year?/:month?/:day?`;
 
+/** Router pattern for the journal: the day is optional so `/journal` means today. */
+export const JOURNAL_ROUTE_PATTERN = `${ROUTES.JOURNAL}/:date?`;
+
 export type RouteKey = keyof typeof ROUTES;
 export type RoutePath = (typeof ROUTES)[RouteKey];
 
 export const SPACE_ROUTE_PATTERN = "/spaces/:spaceUid";
 
 /** Collection pages that exist both globally and beneath a Space. */
-const COLLECTION_ROUTE_PATTERNS = [ROUTES.HOME, ROUTES.EXPLORE, ROUTES.ATTACHMENTS, CALENDAR_ROUTE_PATTERN, ROUTES.MAP];
+const COLLECTION_ROUTE_PATTERNS = [
+  ROUTES.HOME,
+  ROUTES.EXPLORE,
+  ROUTES.ATTACHMENTS,
+  CALENDAR_ROUTE_PATTERN,
+  JOURNAL_ROUTE_PATTERN,
+  ROUTES.MAP,
+];
 
 const isCollectionPathname = (pathname: string): boolean =>
   COLLECTION_ROUTE_PATTERNS.some((path) => matchPath({ path, caseSensitive: false }, pathname) !== null);

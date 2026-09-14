@@ -258,7 +258,8 @@
     "version": "Versiya",
     "visibility": "Görünürlük",
     "views": "Görünüşlər",
-    "yourself": "Özünüz"
+    "yourself": "Özünüz",
+    "journal": "Journal"
   },
   "locale-picker": {
     "no-language-feedback": "Dil tapılmadı? Rəy göndərin"
@@ -347,7 +348,10 @@
       "trigger": "Audio yaz",
       "unsupported": "Audio yazısı dəstəklənmir",
       "unsupported-description": "Bu brauzer qeyd redaktorundan audio yaza bilmir."
-    }
+    },
+    "offline-draft-saved": "Saved to local drafts",
+    "offline-queue-flushed": "Local drafts submitted",
+    "offline-badge": "Offline"
   },
   "inbox": {
     "failed-to-load": "Gələnlər elementi yüklənmədi",
@@ -1164,7 +1168,26 @@
       "refresh": "Refresh",
       "results": "Results ({{count}})",
       "title": "Audit logs",
-      "username-placeholder": "Username (exact)"
+      "username-placeholder": "Username (exact)",
+      "range": "Time range",
+      "range-today": "Today",
+      "range-7d": "Last 7 days",
+      "range-all": "All time",
+      "export-csv": "Export CSV",
+      "prev": "Previous",
+      "next": "Next",
+      "page": "Page {{page}}"
+    },
+    "import": {
+      "choose-file": "Choose file",
+      "description": "Bring memos in from Flomo, CSV exports, or an Obsidian markdown folder.",
+      "finished": "Finished importing {{count}} memos.",
+      "formats": "Supported: Flomo export JSON (content / created_at), CSV with a content column, .md files, and zip archives of markdown notes.",
+      "label": "Import",
+      "parsing": "Reading file…",
+      "partial": "Imported {{created}} memos; {{failed}} failed.",
+      "progress": "Imported {{completed}}/{{total}} ({{failed}} failed)",
+      "success": "Imported {{count}} memos."
     }
   },
   "space": {
@@ -1222,5 +1245,17 @@
     "select-visibility": "Görünürlük",
     "tags": "Etiketlər",
     "upload-attachment": "Qoşma(lar) yüklə"
+  },
+  "journal": {
+    "composer-placeholder": "Write about this day…",
+    "day-count": "{{count}} memos this day",
+    "empty": "No memos on this day yet. Start the journal above.",
+    "go-to-today": "Today",
+    "load-error": "Could not load this day.",
+    "loading": "Loading this day…",
+    "next-day": "Next day",
+    "previous-day": "Previous day",
+    "retry": "Retry",
+    "today": "Today"
   }
 }

@@ -3,9 +3,16 @@ import { toast } from "react-hot-toast";
 import { importBookmarkFolders, parseBookmarkHtml } from "./bookmarks";
 import { useNavStrings } from "./i18n";
 import { buildConfigContent } from "./storage";
-import { NAV_CONFIG_CONTENT_LIMIT, type NavConfig } from "./types";
+import { NAV_CONFIG_LOCAL_SOFT_LIMIT, NAV_CONFIG_MEMO_CONTENT_LIMIT, type NavConfig } from "./types";
 
-/** Parse a browser bookmark HTML export and merge it into the config. */
+/**
+ * Parse a browser bookmark HTML export and merge it into the config.
+ *
+ * Large imports are allowed: the local store is the primary persistence and
+ * has a multi-MB quota. The memo backup is skipped by the persist path when
+ * the body exceeds the server content cap, and the page surfaces that as a
+ * local-only note.
+ */
 export function useBookmarkImport({
   state,
   persist,
@@ -34,21 +41,18 @@ export function useBookmarkImport({
         toast(t.importNoNew);
         return;
       }
-      // Refuse up-front when the config memo would exceed the server content cap.
+      // Soft ceiling only — beyond this the browser itself will struggle.
       const size = buildConfigContent(result.config).length;
-      if (size > NAV_CONFIG_CONTENT_LIMIT) {
-        toast.error(t.importTooLarge(size, NAV_CONFIG_CONTENT_LIMIT));
+      if (size > NAV_CONFIG_LOCAL_SOFT_LIMIT) {
+        toast.error(t.importTooLarge(size, NAV_CONFIG_LOCAL_SOFT_LIMIT));
         return;
       }
       await persist(result.config);
+      const skippedBackup = size > NAV_CONFIG_MEMO_CONTENT_LIMIT;
       toast.success(t.importSuccess(result.addedCards, result.addedGroups, result.skippedDuplicates));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "";
-      if (message.includes("content too long") || message.includes("invalid_argument")) {
-        toast.error(t.importTooLarge(0, NAV_CONFIG_CONTENT_LIMIT));
-      } else {
-        toast.error(t.saveFailed);
-      }
+      if (skippedBackup) toast(t.localOnlyNote);
+    } catch {
+      toast.error(t.saveFailed);
     }
   };
 

@@ -57,7 +57,7 @@ describe("NavigationPage empty and error states", () => {
     expect(screen.getByText("GitHub")).toBeInTheDocument();
   });
 
-  it("shows the reset empty state for a broken memo with no cache", async () => {
+  it("shows the reset empty state for a broken memo with no local copy", async () => {
     rpc.listMemos.mockResolvedValue({ memos: [{ name: "memos/broken", content: "nav-config:v1\n```json\nnot json\n```" }] });
     renderPage();
 
@@ -65,12 +65,40 @@ describe("NavigationPage empty and error states", () => {
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
-  it("shows a retry state when the RPC fails with no cache", async () => {
+  it("seeds a local wall when the RPC fails with no local copy", async () => {
     rpc.listMemos.mockRejectedValue(new Error("offline"));
+    rpc.createMemo.mockRejectedValue(new Error("offline"));
     renderPage();
 
-    expect(await screen.findByText("Offline cache")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    // Local-first: the first visit still renders a working seed offline.
+    expect(await screen.findAllByTestId("nav-card")).toHaveLength(3);
+    expect(screen.getByTestId("nav-degraded-note")).toBeInTheDocument();
+  });
+
+  it("serves the local config and shows the offline note when the RPC fails after a prior save", async () => {
+    localStorage.setItem(
+      "nav-config-local",
+      JSON.stringify({
+        version: 1,
+        rev: 3,
+        updatedAt: Date.now(),
+        groups: [
+          {
+            id: "g-1",
+            name: "Local",
+            collapsed: false,
+            items: [{ id: "c-1", title: "OnlyLocal", url: "https://local.example", updatedAt: Date.now() }],
+          },
+        ],
+        tombstones: [],
+      }),
+    );
+    rpc.listMemos.mockRejectedValue(new Error("offline"));
+
+    renderPage();
+
+    expect(await screen.findByText("OnlyLocal")).toBeInTheDocument();
+    expect(screen.getByTestId("nav-degraded-note")).toBeInTheDocument();
   });
 });
 

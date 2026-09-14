@@ -37,6 +37,11 @@ const (
 	FieldKindJSONExists   FieldKind = "json_exists"
 	FieldKindJSONList     FieldKind = "json_list"
 	FieldKindVirtualAlias FieldKind = "virtual_alias"
+	// FieldKindRelatedTextMatch is a string searched through a correlated
+	// EXISTS subquery against a related table (attachment filename, comment
+	// content). It has no column on the outer query, so only text-match
+	// operators are supported.
+	FieldKindRelatedTextMatch FieldKind = "related_text_match"
 )
 
 // Column identifies the backing table column.
@@ -254,6 +259,36 @@ func NewSchema() Schema {
 				CompareNeq: true,
 			},
 		},
+		// attachment_filename matches memos that have an attachment whose
+		// filename satisfies contains/startsWith/endsWith. Rendered as a
+		// correlated EXISTS on attachment.memo_id — no outer-query JOIN, so
+		// multiple matching attachments cannot duplicate the memo row.
+		// Nested CEL syntax (attachment.filename.contains) is intentionally
+		// not used: the parser only accepts simple identifiers, and a dotted
+		// name would require a message-shaped CEL variable plus select-path
+		// handling for little benefit.
+		"attachment_filename": {
+			Name:             "attachment_filename",
+			Kind:             FieldKindRelatedTextMatch,
+			Type:             FieldTypeString,
+			Column:           Column{Table: "attachment", Name: "filename"},
+			SupportsContains: true,
+			Expressions:      map[DialectName]string{},
+			// Empty non-nil map: comparison operators are rejected at parse
+			// time; only text-match functions reach the renderer.
+			AllowedComparisonOps: map[ComparisonOperator]bool{},
+		},
+		// comment matches memos that have at least one COMMENT-related memo
+		// whose content satisfies contains/startsWith/endsWith.
+		"comment": {
+			Name:                 "comment",
+			Kind:                 FieldKindRelatedTextMatch,
+			Type:                 FieldTypeString,
+			Column:               Column{Table: "comment_memo", Name: "content"},
+			SupportsContains:     true,
+			Expressions:          map[DialectName]string{},
+			AllowedComparisonOps: map[ComparisonOperator]bool{},
+		},
 	}
 
 	envOptions := []cel.EnvOption{
@@ -273,6 +308,8 @@ func NewSchema() Schema {
 		cel.Variable("has_code", cel.BoolType),
 		cel.Variable("has_incomplete_tasks", cel.BoolType),
 		cel.Variable("has_location", cel.BoolType),
+		cel.Variable("attachment_filename", cel.StringType),
+		cel.Variable("comment", cel.StringType),
 		cel.Variable("now", cel.TimestampType),
 		ext.Sets(),
 		cel.ASTValidators(cel.ValidateRegexLiterals()),

@@ -100,11 +100,25 @@ func handleListAuditLogs(c *echo.Context, storeInstance *store.Store, authentica
 	return c.JSON(http.StatusOK, payload)
 }
 
-// applyAuditLogQueryParams reads limit, action, outcome, and username from the
-// request query string and applies them to find.
+// applyAuditLogQueryParams reads limit, offset, since, action, outcome, and
+// username from the request query string and applies them to find.
 func applyAuditLogQueryParams(c *echo.Context, find *store.FindAuditLog) error {
-	if raw := c.QueryParam("limit"); raw != "" {
-		limit, err := strconv.Atoi(raw)
+	return parseAuditLogQueryParams(
+		c.QueryParam("limit"),
+		c.QueryParam("offset"),
+		c.QueryParam("since"),
+		c.QueryParam("action"),
+		c.QueryParam("outcome"),
+		c.QueryParam("username"),
+		find,
+	)
+}
+
+// parseAuditLogQueryParams applies raw query values onto find. Extracted from
+// the Echo handler so unit tests can cover pagination and time-range parsing.
+func parseAuditLogQueryParams(limitRaw, offsetRaw, sinceRaw, action, outcome, username string, find *store.FindAuditLog) error {
+	if limitRaw != "" {
+		limit, err := strconv.Atoi(limitRaw)
 		if err != nil || limit <= 0 {
 			return echo.NewHTTPError(http.StatusBadRequest, "invalid limit; must be a positive integer")
 		}
@@ -117,13 +131,29 @@ func applyAuditLogQueryParams(c *echo.Context, find *store.FindAuditLog) error {
 		find.Limit = &limit
 	}
 
-	if action := c.QueryParam("action"); action != "" {
+	if offsetRaw != "" {
+		offset, err := strconv.Atoi(offsetRaw)
+		if err != nil || offset < 0 {
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid offset; must be a non-negative integer")
+		}
+		find.Offset = &offset
+	}
+
+	if sinceRaw != "" {
+		since, err := strconv.ParseInt(sinceRaw, 10, 64)
+		if err != nil || since < 0 {
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid since; must be a unix timestamp")
+		}
+		find.SinceTs = &since
+	}
+
+	if action != "" {
 		find.Action = &action
 	}
-	if outcome := c.QueryParam("outcome"); outcome != "" {
+	if outcome != "" {
 		find.Outcome = &outcome
 	}
-	if username := c.QueryParam("username"); username != "" {
+	if username != "" {
 		find.ActorUsername = &username
 	}
 	return nil

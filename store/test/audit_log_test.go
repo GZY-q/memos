@@ -58,4 +58,23 @@ func TestAuditLogCreateAndList(t *testing.T) {
 	for _, row := range byUsername {
 		require.Equal(t, "alice", row.ActorUsername)
 	}
+
+	// Offset pagination: skip the first row and still receive the rest.
+	all, err := ts.ListAuditLogs(ctx, &store.FindAuditLog{})
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(all), 2)
+	offset := 1
+	paged, err := ts.ListAuditLogs(ctx, &store.FindAuditLog{Offset: &offset})
+	require.NoError(t, err)
+	require.Equal(t, len(all)-1, len(paged))
+	require.Equal(t, all[1].ID, paged[0].ID)
+
+	// SinceTs keeps only events at or after the cutoff.
+	since := all[0].CreatedTs
+	sinceOnly, err := ts.ListAuditLogs(ctx, &store.FindAuditLog{SinceTs: &since})
+	require.NoError(t, err)
+	require.NotEmpty(t, sinceOnly)
+	for _, row := range sinceOnly {
+		require.GreaterOrEqual(t, row.CreatedTs, since)
+	}
 }

@@ -1,11 +1,13 @@
 /**
- * Storage adapter: persists the navigation config inside Memos itself, as one
- * ARCHIVED + PRIVATE memo tagged with a plain-string marker and a fenced JSON
- * body. ARCHIVED keeps it out of timelines, global search, tags and statistics
- * (they all list state NORMAL); it stays recoverable via a server-side CEL
- * filter (`state=ARCHIVED + content.contains(marker)`) without any dependence
- * on localStorage. The memo also surfaces in the user's Archive page — an
- * accepted, user-manageable transparency trade-off.
+ * Optional memo backup for the navigation config: one ARCHIVED + PRIVATE memo
+ * tagged with a plain-string marker and a fenced JSON body. ARCHIVED keeps it
+ * out of timelines, global search, tags and statistics (they all list state
+ * NORMAL); it stays recoverable via a server-side CEL filter
+ * (`state=ARCHIVED + content.contains(marker)`).
+ *
+ * Primary persistence is `localStore.ts` (IndexedDB / localStorage). This memo
+ * is only upserted when the body fits the server content cap — see
+ * `NAV_CONFIG_MEMO_CONTENT_LIMIT` and `controller.persistConfig`.
  *
  * Raw MemoService RPCs only: zero changes to upstream stores, hooks or backend.
  */

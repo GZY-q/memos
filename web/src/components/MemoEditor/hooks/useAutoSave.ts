@@ -1,5 +1,6 @@
 import { equals } from "@bufbuild/protobuf";
 import { useCallback, useEffect, useRef } from "react";
+import { clearOfflineDraft, saveOfflineDraft } from "@/lib/offline/offlineDrafts";
 import { AttachmentSchema } from "@/types/proto/api/v1/attachment_service_pb";
 import { LocationSchema } from "@/types/proto/api/v1/memo_service_pb";
 import { cacheService, type EditorDraft } from "../services";
@@ -40,6 +41,9 @@ export const useAutoSave = (username: string, cacheKey: string | undefined, enab
         discardedDraftRef.current = undefined;
       }
       cacheService.save(key, draft.content, draft.attachments, draft.location);
+      // Mirror the draft into IndexedDB so a hard refresh / offline reopen can
+      // still recover it when localStorage is cleared or quota-constrained.
+      void saveOfflineDraft({ id: key, content: draft.content, updatedAt: Date.now() });
     };
 
     // Persist the current draft on mount/enable, then on every relevant change.
@@ -91,6 +95,7 @@ export const useAutoSave = (username: string, cacheKey: string | undefined, enab
     const key = cacheService.key(username, cacheKey);
     discardedDraftRef.current = latestDraftRef.current;
     cacheService.clear(key);
+    void clearOfflineDraft(key);
   }, [username, cacheKey]);
 
   return { discardDraft };

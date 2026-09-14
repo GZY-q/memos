@@ -1,4 +1,4 @@
-import { WifiOffIcon } from "lucide-react";
+import { DatabaseIcon, WifiOffIcon } from "lucide-react";
 import { type ChangeEvent, useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { CardDialog, type CardDialogState } from "./CardEditDialog";
@@ -233,7 +233,8 @@ const NavigationPage = () => {
     else cardRefs.current.delete(id);
   }, []);
 
-  const isDegraded = state?.source === "cache";
+  // Offline (memo backup unreachable) — local is still fully editable.
+  const isDegraded = state?.memoSync === "failed";
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -249,6 +250,12 @@ const NavigationPage = () => {
             <p className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="nav-degraded-note">
               <WifiOffIcon className="size-3.5" />
               {t.degradedBody}
+            </p>
+          ) : null}
+          {state?.memoSync === "skipped-too-large" ? (
+            <p className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="nav-local-only-note">
+              <DatabaseIcon className="size-3.5" />
+              {t.localOnlyNote}
             </p>
           ) : null}
 

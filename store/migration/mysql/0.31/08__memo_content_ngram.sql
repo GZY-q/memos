@@ -1,9 +1,8 @@
 -- Optional InnoDB FULLTEXT ngram index over memo.content.
 --
--- CEL content.contains keeps the portable LIKE path (render.go is intentionally
--- unchanged): the MySQL optimizer does not use FULLTEXT for LIKE '%x%'. The
--- ngram parser is installed so a future MATCH AGAINST path can adopt the index
--- without another schema migration.
+-- CEL content.contains with a needle of >= 2 runes compiles to
+-- MATCH(memo.content) AGAINST(? IN BOOLEAN MODE) (internal/filter/render.go).
+-- Shorter needles and startsWith/endsWith keep the portable LIKE path.
 --
 -- Idempotent: LATEST.sql installs the same index; MySQL rejects a duplicate
 -- FULLTEXT ADD, so only issue the ALTER when information_schema has no such

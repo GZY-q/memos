@@ -3,12 +3,44 @@ package filter
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	_ "modernc.org/sqlite"
+	"golang.org/x/text/cases"
+	msqlite "modernc.org/sqlite"
 )
+
+var (
+	testUnicodeLowerOnce sync.Once
+)
+
+// registerTestUnicodeLower registers the same memos_unicode_lower scalar the
+// SQLite store installs, so filter behavioral tests can run foldedLike SQL
+// without importing store/db/sqlite. Registration is global and idempotent.
+func registerTestUnicodeLower(t *testing.T) {
+	t.Helper()
+	testUnicodeLowerOnce.Do(func() {
+		fold := cases.Fold()
+		// Ignore the error: a prior registration (e.g. another test package
+		// in the same binary) already installed the function.
+		_ = msqlite.RegisterScalarFunction("memos_unicode_lower", 1, func(_ *msqlite.FunctionContext, args []driver.Value) (driver.Value, error) {
+			if len(args) == 0 || args[0] == nil {
+				return nil, nil
+			}
+			switch v := args[0].(type) {
+			case string:
+				return fold.String(v), nil
+			case []byte:
+				return fold.String(string(v)), nil
+			default:
+				return v, nil
+			}
+		})
+	})
+}
 
 func TestCompileAcceptsStandardTagEqualityPredicate(t *testing.T) {
 	t.Parallel()
@@ -140,11 +172,57 @@ func TestCompileContainsUsesSQLiteFTSForLongNeedles(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []any{`"NEAR(a b)"`}, stmt.Args)
 
-	// Other dialects keep portable LIKE/ILIKE.
+	// Postgres keeps portable ILIKE (pg_trgm only accelerates the existing path).
 	pg, err := engine.CompileToStatement(context.Background(), `content.contains("meeting notes")`, RenderOptions{Dialect: DialectPostgres})
 	require.NoError(t, err)
 	require.Contains(t, pg.SQL, "ILIKE")
 	require.NotContains(t, pg.SQL, "memo_fts")
+	require.NotContains(t, pg.SQL, "AGAINST")
+}
+
+func TestCompileContainsUsesMySQLNgramForLongNeedles(t *testing.T) {
+	t.Parallel()
+
+	engine, err := NewEngine(NewSchema())
+	require.NoError(t, err)
+
+	// Long enough for ngram tokenization (>= 2 runes): MATCH ... AGAINST phrase.
+	stmt, err := engine.CompileToStatement(context.Background(), `content.contains("meeting notes")`, RenderOptions{Dialect: DialectMySQL})
+	require.NoError(t, err)
+	require.Contains(t, stmt.SQL, "MATCH(`memo`.`content`) AGAINST(")
+	require.Contains(t, stmt.SQL, "IN BOOLEAN MODE")
+	require.NotContains(t, stmt.SQL, "LIKE")
+	require.Equal(t, []any{`"meeting notes"`}, stmt.Args)
+
+	// Two-rune needle is the ngram minimum and still uses FULLTEXT.
+	stmt, err = engine.CompileToStatement(context.Background(), `content.contains("你好")`, RenderOptions{Dialect: DialectMySQL})
+	require.NoError(t, err)
+	require.Contains(t, stmt.SQL, "AGAINST(")
+	require.Equal(t, []any{`"你好"`}, stmt.Args)
+
+	// Internal double quotes are stripped so the boolean-mode phrase stays intact.
+	stmt, err = engine.CompileToStatement(context.Background(), `content.contains("foo\"bar")`, RenderOptions{Dialect: DialectMySQL})
+	require.NoError(t, err)
+	require.Equal(t, []any{`"foobar"`}, stmt.Args)
+
+	// Boolean operators inside the needle stay literal (wrapped in the phrase).
+	stmt, err = engine.CompileToStatement(context.Background(), `content.contains("+meet -notes")`, RenderOptions{Dialect: DialectMySQL})
+	require.NoError(t, err)
+	require.Equal(t, []any{`"+meet -notes"`}, stmt.Args)
+
+	// Single-rune needles stay on LIKE: ngram_token_size defaults to 2.
+	stmt, err = engine.CompileToStatement(context.Background(), `content.contains("a")`, RenderOptions{Dialect: DialectMySQL})
+	require.NoError(t, err)
+	require.Contains(t, stmt.SQL, "LIKE")
+	require.NotContains(t, stmt.SQL, "AGAINST")
+	require.Equal(t, []any{`%a%`}, stmt.Args)
+
+	// startsWith/endsWith cannot be expressed as ngram phrases; keep LIKE.
+	stmt, err = engine.CompileToStatement(context.Background(), `content.startsWith("meeting")`, RenderOptions{Dialect: DialectMySQL})
+	require.NoError(t, err)
+	require.Contains(t, stmt.SQL, "LIKE")
+	require.NotContains(t, stmt.SQL, "AGAINST")
+	require.Equal(t, []any{`meeting%`}, stmt.Args)
 }
 
 func TestRenderTagMembershipIsExactPerDialect(t *testing.T) {
@@ -674,6 +752,200 @@ func TestHasLocationSQLiteBehavior(t *testing.T) {
 		{`!has_location`, []int{1, 4, 5}},
 		{`has_location == false`, []int{1, 4, 5}},
 		{`has_location != false`, []int{2, 3}},
+	}
+	for _, tc := range cases {
+		stmt, err := engine.CompileToStatement(context.Background(), tc.expr, RenderOptions{Dialect: DialectSQLite})
+		require.NoError(t, err, tc.expr)
+		require.Equal(t, tc.want, selectMemoIDs(t, db, stmt), tc.expr)
+	}
+}
+
+// =============================================================================
+// Related-text fields: attachment_filename and comment
+// =============================================================================
+
+func TestRenderAttachmentFilenameContainsPerDialect(t *testing.T) {
+	t.Parallel()
+
+	engine, err := NewEngine(NewSchema())
+	require.NoError(t, err)
+
+	cases := []struct {
+		dialect   DialectName
+		fragments []string
+		not       []string
+		args      []any
+	}{
+		{
+			DialectSQLite,
+			[]string{"EXISTS (SELECT 1 FROM `attachment`", "`attachment`.`memo_id` = `memo`.`id`", "memos_unicode_lower(`attachment`.`filename`) LIKE"},
+			nil,
+			[]any{`%report\%%`},
+		},
+		{
+			DialectMySQL,
+			[]string{"EXISTS (SELECT 1 FROM `attachment`", "`attachment`.`memo_id` = `memo`.`id`", "`attachment`.`filename` LIKE"},
+			[]string{"AGAINST"},
+			[]any{`%report\%%`},
+		},
+		{
+			DialectPostgres,
+			[]string{"EXISTS (SELECT 1 FROM attachment", "attachment.memo_id = memo.id", "attachment.filename ILIKE"},
+			nil,
+			[]any{`%report\%%`},
+		},
+	}
+	for _, tc := range cases {
+		stmt, err := engine.CompileToStatement(context.Background(), `attachment_filename.contains("report%")`, RenderOptions{Dialect: tc.dialect})
+		require.NoError(t, err, tc.dialect)
+		for _, frag := range tc.fragments {
+			require.Contains(t, stmt.SQL, frag, "dialect %s", tc.dialect)
+		}
+		for _, frag := range tc.not {
+			require.NotContains(t, stmt.SQL, frag, "dialect %s", tc.dialect)
+		}
+		require.Equal(t, tc.args, stmt.Args, "dialect %s", tc.dialect)
+	}
+}
+
+func TestRenderCommentContainsPerDialect(t *testing.T) {
+	t.Parallel()
+
+	engine, err := NewEngine(NewSchema())
+	require.NoError(t, err)
+
+	cases := []struct {
+		dialect   DialectName
+		fragments []string
+		args      []any
+	}{
+		{
+			DialectSQLite,
+			[]string{
+				"EXISTS (SELECT 1 FROM `memo` AS `comment_memo`",
+				"JOIN `memo_relation` AS `comment_rel`",
+				"`comment_rel`.`related_memo_id` = `comment_memo`.`id`",
+				"`comment_rel`.`type` = 'COMMENT'",
+				"`comment_rel`.`memo_id` = `memo`.`id`",
+				"memos_unicode_lower(`comment_memo`.`content`) LIKE",
+			},
+			[]any{`%ship it%`},
+		},
+		{
+			DialectMySQL,
+			[]string{
+				"EXISTS (SELECT 1 FROM `memo` AS `comment_memo`",
+				"JOIN `memo_relation` AS `comment_rel`",
+				"`comment_rel`.`type` = 'COMMENT'",
+				"`comment_memo`.`content` LIKE",
+			},
+			[]any{`%ship it%`},
+		},
+		{
+			DialectPostgres,
+			[]string{
+				"EXISTS (SELECT 1 FROM memo AS comment_memo",
+				"JOIN memo_relation AS comment_rel",
+				"comment_rel.type = 'COMMENT'",
+				"comment_memo.content ILIKE",
+			},
+			[]any{`%ship it%`},
+		},
+	}
+	for _, tc := range cases {
+		stmt, err := engine.CompileToStatement(context.Background(), `comment.contains("ship it")`, RenderOptions{Dialect: tc.dialect})
+		require.NoError(t, err, tc.dialect)
+		for _, frag := range tc.fragments {
+			require.Contains(t, stmt.SQL, frag, "dialect %s: %s", tc.dialect, stmt.SQL)
+		}
+		require.Equal(t, tc.args, stmt.Args, "dialect %s", tc.dialect)
+	}
+}
+
+func TestRelatedTextFieldsRejectUnsupportedOperators(t *testing.T) {
+	t.Parallel()
+
+	engine, err := NewEngine(NewSchema())
+	require.NoError(t, err)
+
+	// Comparison operators are blocked at parse time (empty AllowedComparisonOps).
+	_, err = engine.CompileToStatement(context.Background(), `attachment_filename == "a.pdf"`, RenderOptions{Dialect: DialectSQLite})
+	require.ErrorContains(t, err, "operator = not allowed")
+
+	_, err = engine.CompileToStatement(context.Background(), `comment == "hi"`, RenderOptions{Dialect: DialectSQLite})
+	require.ErrorContains(t, err, "operator = not allowed")
+
+	// matches() has no outer-query column for REGEXP.
+	_, err = engine.CompileToStatement(context.Background(), `attachment_filename.matches(".*")`, RenderOptions{Dialect: DialectSQLite})
+	require.ErrorContains(t, err, "does not support matches()")
+
+	_, err = engine.CompileToStatement(context.Background(), `comment.matches(".*")`, RenderOptions{Dialect: DialectSQLite})
+	require.ErrorContains(t, err, "does not support matches()")
+
+	// size() needs a length expression on a real column.
+	_, err = engine.CompileToStatement(context.Background(), `size(attachment_filename) > 0`, RenderOptions{Dialect: DialectSQLite})
+	require.Error(t, err)
+}
+
+func TestRelatedTextStartsWithAndEndsWith(t *testing.T) {
+	t.Parallel()
+
+	engine, err := NewEngine(NewSchema())
+	require.NoError(t, err)
+
+	// startsWith keeps a trailing-wildcard pattern inside the EXISTS.
+	stmt, err := engine.CompileToStatement(context.Background(), `attachment_filename.startsWith("IMG_")`, RenderOptions{Dialect: DialectMySQL})
+	require.NoError(t, err)
+	require.Contains(t, stmt.SQL, "EXISTS (SELECT 1 FROM `attachment`")
+	require.Equal(t, []any{`IMG\_%`}, stmt.Args)
+
+	// endsWith uses a leading wildcard. `.` is not a LIKE metacharacter.
+	stmt, err = engine.CompileToStatement(context.Background(), `attachment_filename.endsWith(".pdf")`, RenderOptions{Dialect: DialectMySQL})
+	require.NoError(t, err)
+	require.Equal(t, []any{`%.pdf`}, stmt.Args)
+}
+
+// TestRelatedTextSQLiteBehavior exercises the EXISTS SQL against a real SQLite
+// database. memos_unicode_lower is registered locally so foldedLike works
+// without pulling in store/db/sqlite.
+func TestRelatedTextSQLiteBehavior(t *testing.T) {
+	registerTestUnicodeLower(t)
+	db, err := sql.Open("sqlite", ":memory:")
+	require.NoError(t, err)
+	db.SetMaxOpenConns(1)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+
+	_, err = db.Exec(`CREATE TABLE memo (id INTEGER PRIMARY KEY, content TEXT)`)
+	require.NoError(t, err)
+	_, err = db.Exec(`CREATE TABLE attachment (id INTEGER PRIMARY KEY, memo_id INTEGER, filename TEXT)`)
+	require.NoError(t, err)
+	_, err = db.Exec(`CREATE TABLE memo_relation (memo_id INTEGER, related_memo_id INTEGER, type TEXT)`)
+	require.NoError(t, err)
+
+	_, err = db.Exec(`INSERT INTO memo (id, content) VALUES (1, 'parent'), (2, 'other'), (3, 'parent'), (4, 'parent')`)
+	require.NoError(t, err)
+	_, err = db.Exec(`INSERT INTO memo (id, content) VALUES (10, 'Looks good, ship it'), (11, 'needs work')`)
+	require.NoError(t, err)
+	_, err = db.Exec(`INSERT INTO attachment (memo_id, filename) VALUES (1, 'Quarterly-Report.pdf'), (3, 'photo.png')`)
+	require.NoError(t, err)
+	// memo 1 has a ship-it comment; memo 3's comment does not match.
+	_, err = db.Exec(`INSERT INTO memo_relation (memo_id, related_memo_id, type) VALUES (1, 10, 'COMMENT'), (3, 11, 'COMMENT')`)
+	require.NoError(t, err)
+
+	engine, err := NewEngine(NewSchema())
+	require.NoError(t, err)
+
+	cases := []struct {
+		expr string
+		want []int
+	}{
+		{`attachment_filename.contains("report")`, []int{1}},
+		{`attachment_filename.contains("Report")`, []int{1}},
+		{`attachment_filename.endsWith(".png")`, []int{3}},
+		{`comment.contains("ship it")`, []int{1}},
+		{`comment.contains("needs")`, []int{3}},
+		{`attachment_filename.contains("report") && comment.contains("ship it")`, []int{1}},
+		{`attachment_filename.contains("nomatch")`, nil},
 	}
 	for _, tc := range cases {
 		stmt, err := engine.CompileToStatement(context.Background(), tc.expr, RenderOptions{Dialect: DialectSQLite})

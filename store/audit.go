@@ -42,6 +42,10 @@ type FindAuditLog struct {
 	Outcome *string
 	// Limit caps the result size. Drivers apply a sane default when unset.
 	Limit *int
+	// Offset skips the first N matching rows (offset-based pagination).
+	Offset *int
+	// SinceTs keeps only events with created_ts >= SinceTs (unix seconds).
+	SinceTs *int64
 }
 
 // CreateAuditLog persists a new audit event.

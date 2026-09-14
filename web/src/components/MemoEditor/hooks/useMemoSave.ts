@@ -6,6 +6,8 @@ import { attachmentKeys } from "@/hooks/useAttachmentQueries";
 import { memoKeys } from "@/hooks/useMemoQueries";
 import { userKeys } from "@/hooks/useUserQueries";
 import { handleError } from "@/lib/error";
+import { offlineSaveId, shouldQueueSaveError } from "@/lib/offline/draftQueue";
+import { queueOfflineSave } from "@/lib/offline/useOfflineDraftQueue";
 import type { Visibility } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { errorService, memoService, validationService } from "../services";
@@ -107,6 +109,30 @@ export function useMemoSave({
       }
       onConfirm?.(result.memoName);
     } catch (error) {
+      // Network / offline failures become a queued local draft that auto-submits
+      // when connectivity returns. Validation and permission errors still surface.
+      if (shouldQueueSaveError(error) && state.content.trim()) {
+        const kind = memoName ? "update" : parentMemoName ? "comment" : "create";
+        await queueOfflineSave({
+          id: offlineSaveId(kind, memoName ?? parentMemoName),
+          kind,
+          content: state.content,
+          visibility: (state.metadata.visibility ?? 0) as number,
+          memoName,
+          parentMemoName,
+          space: defaultSpace,
+        });
+        discardDraft();
+        toast.success(t("editor.offline-draft-saved"));
+        dispatch(actions.reset());
+        if (!memoName && defaultVisibility) {
+          dispatch(actions.setMetadata({ visibility: defaultVisibility }));
+        }
+        if (!memoName && defaultCreateTime) {
+          dispatch(actions.setTimestamps({ createTime: defaultCreateTime, updateTime: defaultCreateTime }));
+        }
+        return;
+      }
       handleError(error, toast.error, {
         context: "Failed to save memo",
         fallbackMessage: errorService.getErrorMessage(error),

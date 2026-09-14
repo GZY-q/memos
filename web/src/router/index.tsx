@@ -11,7 +11,7 @@ import {
   RequireGuestRoute,
   RequireInstanceInitializationRoute,
 } from "./guards";
-import { CALENDAR_ROUTE_PATTERN, ROUTES, SPACE_ROUTE_PATTERN } from "./routes";
+import { CALENDAR_ROUTE_PATTERN, JOURNAL_ROUTE_PATTERN, ROUTES, SPACE_ROUTE_PATTERN } from "./routes";
 import { SpaceRoute } from "./SpaceRoute";
 
 const AdminSignIn = lazyWithReload(() => import("@/pages/AdminSignIn"));
@@ -22,6 +22,7 @@ const MemoMap = lazyWithReload(() => import("@/pages/Map"));
 const Calendar = lazyWithReload(() => import("@/pages/Calendar"));
 const Explore = lazyWithReload(() => import("@/pages/Explore"));
 const Home = lazyWithReload(() => import("@/pages/Home"));
+const Journal = lazyWithReload(() => import("@/pages/Journal"));
 const Inboxes = lazyWithReload(() => import("@/pages/Inboxes"));
 const MemoDetail = lazyWithReload(() => import("@/pages/MemoDetail"));
 const NotFound = lazyWithReload(() => import("@/pages/NotFound"));
@@ -95,6 +96,7 @@ export const routeConfig: RouteObject[] = [
                 children: [
                   { path: Routes.ARCHIVED, element: <Archived /> },
                   { path: CALENDAR_ROUTE_PATTERN, element: <Calendar /> },
+                  { path: JOURNAL_ROUTE_PATTERN, element: <Journal /> },
                   {
                     element: <RequireFullInitializationRoute />,
                     children: [{ path: Routes.VIEWS, element: <MemoViews /> }],
@@ -123,6 +125,7 @@ export const routeConfig: RouteObject[] = [
                               { index: true, element: <Home /> },
                               { path: "explore", element: <Explore /> },
                               { path: "calendar/:year?/:month?/:day?", element: <Calendar /> },
+                              { path: "journal/:date?", element: <Journal /> },
                             ],
                           },
                           { path: "attachments", element: <Attachments /> },

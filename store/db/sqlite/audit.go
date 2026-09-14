@@ -49,13 +49,20 @@ func (d *DB) ListAuditLogs(ctx context.Context, find *store.FindAuditLog) ([]*st
 	if find.Outcome != nil {
 		where, args = append(where, "`outcome` = ?"), append(args, *find.Outcome)
 	}
+	if find.SinceTs != nil {
+		where, args = append(where, "`created_ts` >= ?"), append(args, *find.SinceTs)
+	}
 	limit := store.AuditDefaultListLimit()
 	if find.Limit != nil && *find.Limit > 0 {
 		limit = *find.Limit
 	}
+	offset := 0
+	if find.Offset != nil && *find.Offset > 0 {
+		offset = *find.Offset
+	}
 	query := "SELECT `id`, `created_ts`, `actor_user_id`, `actor_username`, `action`, `procedure`, `client_ip`, `outcome`, `detail` FROM `audit_log` WHERE " +
-		strings.Join(where, " AND ") + " ORDER BY `created_ts` DESC, `id` DESC LIMIT ?"
-	args = append(args, limit)
+		strings.Join(where, " AND ") + " ORDER BY `created_ts` DESC, `id` DESC LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
 
 	rows, err := d.db.QueryContext(ctx, query, args...)
 	if err != nil {

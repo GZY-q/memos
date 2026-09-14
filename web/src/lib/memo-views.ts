@@ -39,6 +39,12 @@ export const isCalendarRoute = (pathname: string): boolean => {
   return comparablePath === ROUTES.CALENDAR || comparablePath.startsWith(`${ROUTES.CALENDAR}/`);
 };
 
+/** `/journal` and any day beneath it. */
+export const isJournalRoute = (pathname: string): boolean => {
+  const comparablePath = comparablePathname(pathname);
+  return comparablePath === ROUTES.JOURNAL || comparablePath.startsWith(`${ROUTES.JOURNAL}/`);
+};
+
 /**
  * Routes that render a memo collection the sidebar can narrow: the scope routes, a user
  * profile and the calendar. Views, calendar days and tags apply in place on all of them.
@@ -47,6 +53,7 @@ export const isMemoCollectionRoute = (pathname: string): boolean =>
   isMemoScopeRoute(pathname) ||
   getProfileUsername(pathname) !== undefined ||
   isCalendarRoute(pathname) ||
+  isJournalRoute(pathname) ||
   matchPath(ROUTES.MAP, comparablePathname(pathname)) !== null;
 
 export const getMemoScopePath = (scope: PrimaryMemoScope): string => (scope === "explore" ? ROUTES.EXPLORE : ROUTES.HOME);

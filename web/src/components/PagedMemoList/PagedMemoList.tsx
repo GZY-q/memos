@@ -19,6 +19,7 @@ import { useTranslate } from "@/utils/i18n";
 import ColumnGrid, { columnCountForWidth, GRID_GAP } from "../ColumnGrid";
 import MemoFilters from "../MemoFilters";
 import Placeholder from "../Placeholder";
+import { flowCardContainStyle } from "./flowContain";
 import MemoListError from "./MemoListError";
 import { estimateMemoCardHeight } from "./memoCardHeight";
 
@@ -302,12 +303,9 @@ const PagedMemoList = (props: Props) => {
               {initialLoader}
               {initialError}
               {displayMemoList.map((memo) => (
-                // Offscreen cards skip layout/paint; intrinsic size keeps scroll height stable.
-                <div
-                  key={getMemoKey(memo)}
-                  className="w-full"
-                  style={{ contentVisibility: "auto", containIntrinsicBlockSize: "auto 240px" }}
-                >
+                // Offscreen cards skip layout/paint; large lists also gain contain:content
+                // (see flowContain.ts — full virtualization is intentionally not used).
+                <div key={getMemoKey(memo)} className="w-full" style={flowCardContainStyle(displayMemoList.length)}>
                   {props.renderer(memo, { compact: effectiveCompact })}
                 </div>
               ))}

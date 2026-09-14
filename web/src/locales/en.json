@@ -258,7 +258,8 @@
     "version": "Version",
     "visibility": "Visibility",
     "views": "Views",
-    "yourself": "Yourself"
+    "yourself": "Yourself",
+    "journal": "Journal"
   },
   "locale-picker": {
     "no-language-feedback": "Language not found? Submit feedback"
@@ -347,7 +348,10 @@
       "trigger": "Record audio",
       "unsupported": "Audio recording unsupported",
       "unsupported-description": "This browser cannot record audio from the memo composer."
-    }
+    },
+    "offline-draft-saved": "Saved to local drafts",
+    "offline-queue-flushed": "Local drafts submitted",
+    "offline-badge": "Offline"
   },
   "inbox": {
     "failed-to-load": "Failed to load inbox item",
@@ -1164,7 +1168,26 @@
       "column-actor": "Actor",
       "column-action": "Action",
       "column-ip": "IP",
-      "column-outcome": "Outcome"
+      "column-outcome": "Outcome",
+      "range": "Time range",
+      "range-today": "Today",
+      "range-7d": "Last 7 days",
+      "range-all": "All time",
+      "export-csv": "Export CSV",
+      "prev": "Previous",
+      "next": "Next",
+      "page": "Page {{page}}"
+    },
+    "import": {
+      "label": "Import",
+      "description": "Bring memos in from Flomo, CSV exports, or an Obsidian markdown folder.",
+      "formats": "Supported: Flomo export JSON (content / created_at), CSV with a content column, .md files, and zip archives of markdown notes.",
+      "choose-file": "Choose file",
+      "parsing": "Reading file…",
+      "progress": "Imported {{completed}}/{{total}} ({{failed}} failed)",
+      "finished": "Finished importing {{count}} memos.",
+      "success": "Imported {{count}} memos.",
+      "partial": "Imported {{created}} memos; {{failed}} failed."
     }
   },
   "space": {
@@ -1222,5 +1245,17 @@
     "select-visibility": "Visibility",
     "tags": "Tags",
     "upload-attachment": "Upload Attachment(s)"
+  },
+  "journal": {
+    "today": "Today",
+    "day-count": "{{count}} memos this day",
+    "previous-day": "Previous day",
+    "next-day": "Next day",
+    "go-to-today": "Today",
+    "composer-placeholder": "Write about this day…",
+    "empty": "No memos on this day yet. Start the journal above.",
+    "loading": "Loading this day…",
+    "load-error": "Could not load this day.",
+    "retry": "Retry"
   }
 }

@@ -44,15 +44,24 @@ export interface NavConfig {
 }
 
 /**
- * Soft ceiling for the config memo body. Keep in sync with the instance
- * `contentLengthLimit` (default 8192; raise in Instance → Memo related when
- * importing large bookmark walls).
+ * Server default `contentLengthLimit` (8192). The memo is an optional sync
+ * backup, so the write path proactively skips it above this size instead of
+ * burning a rejected RPC. Raise only when the instance setting is known higher.
  */
-export const NAV_CONFIG_CONTENT_LIMIT = 65000;
+export const NAV_CONFIG_MEMO_CONTENT_LIMIT = 8192;
+
+/** Soft ceiling for a local-only config (browser-storage comfort, not a hard quota). */
+export const NAV_CONFIG_LOCAL_SOFT_LIMIT = 2_000_000;
+
+/** Memo backup outcome for the last load/persist; drives the local-only UI hint. */
+export type MemoSyncStatus = "synced" | "skipped-too-large" | "failed" | "none";
 
 export const NAV_STORAGE_KEYS = {
   initialized: "nav-config-initialized",
+  /** Legacy cache key — still mirrored on every local save, and the pre-IDB fallback. */
   cache: "nav-config-cache",
+  /** Primary localStorage copy when IndexedDB is unavailable. */
+  local: "nav-config-local",
 } as const;
 
 /** The seed shown on first visit; every card is removable via the editor. */

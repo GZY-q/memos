@@ -358,6 +358,11 @@ func buildMatchesCondition(call *exprv1.Expr_Call, schema Schema) (Condition, er
 	if !field.SupportsContains {
 		return nil, errors.Errorf("identifier %q does not support matches()", targetName)
 	}
+	// Related-text fields (attachment_filename, comment) only support the
+	// LIKE-based text-match functions; there is no outer-query column for REGEXP.
+	if field.Kind == FieldKindRelatedTextMatch {
+		return nil, errors.Errorf("identifier %q does not support matches()", targetName)
+	}
 	if len(call.Args) != 1 {
 		return nil, errors.New("matches expects exactly one argument")
 	}

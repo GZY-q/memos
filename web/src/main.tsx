@@ -15,6 +15,7 @@ import { InstanceProvider, useInstance } from "@/contexts/InstanceContext";
 import { ViewProvider } from "@/contexts/ViewContext";
 import { useLiveMemoRefresh } from "@/hooks/useLiveMemoRefresh";
 import { useTokenRefreshOnFocus } from "@/hooks/useTokenRefreshOnFocus";
+import { useOfflineDraftQueue } from "@/lib/offline/useOfflineDraftQueue";
 import { queryClient } from "@/lib/query-client";
 import router from "./router";
 import { applyLocaleEarly } from "./utils/i18n";
@@ -48,6 +49,9 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 
   // Live refresh: listen for memo changes via SSE and invalidate caches.
   useLiveMemoRefresh();
+
+  // Offline draft queue: auto-submit saves that failed while the network was down.
+  useOfflineDraftQueue();
 
   // Route loading and feed requests only need the verified identity and the
   // instance profile. Display-sensitive settings continue in the background;

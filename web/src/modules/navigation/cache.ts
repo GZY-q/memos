@@ -1,9 +1,12 @@
 /**
- * localStorage cache + crash-safety snapshot.
+ * Legacy localStorage cache + crash-safety snapshot.
  *
- * The memo is the source of truth; this cache serves read-only degraded mode
- * (fetch failure, signed-out preview) and keeps a pre-write snapshot so a
- * failed or interrupted save never loses the last known good config.
+ * Primary persistence is `localStore.ts` (IndexedDB with localStorage
+ * fallback). This module keeps:
+ * - the pre-save snapshot so a failed primary write never loses the last
+ *   known good config;
+ * - the legacy `nav-config-cache` key, still mirrored on every local save so
+ *   pre-local-first readers keep working.
  */
 
 import { NAV_STORAGE_KEYS, type NavConfig } from "./types";
