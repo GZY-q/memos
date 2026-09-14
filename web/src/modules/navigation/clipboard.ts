@@ -49,8 +49,7 @@ const parseItem = (entry: unknown): NavClipItem | null => {
   if (!createdAt) return null;
   const id = typeof record.id === "string" && record.id ? record.id : newId();
   const rawKind = typeof record.kind === "string" ? record.kind : "text";
-  const kind: NavClipKind =
-    rawKind === "image" || rawKind === "file" || rawKind === "rich" ? (rawKind as NavClipKind) : "text";
+  const kind: NavClipKind = rawKind === "image" || rawKind === "file" || rawKind === "rich" ? (rawKind as NavClipKind) : "text";
   if (kind === "text") {
     const text = typeof record.text === "string" ? record.text : "";
     if (!text.trim()) return null;
@@ -299,7 +298,12 @@ export const addRichClip = async (
   if (html) parts.push("text/html");
   for (const part of blobs) parts.push(part.mime);
 
-  const previewSource = plain.trim() || html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const previewSource =
+    plain.trim() ||
+    html
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   const item: Omit<NavClipItem, "id" | "createdAt"> = {
     kind: "rich",
     text: previewClip(previewSource || parts.join(" · "), 120),
@@ -345,7 +349,10 @@ export const removeClip = (id: string, existing?: NavClipItem[], now = Date.now(
   } else {
     void deleteClipBlob(id);
   }
-  return pruneClips(list.filter((item) => item.id !== id), now);
+  return pruneClips(
+    list.filter((item) => item.id !== id),
+    now,
+  );
 };
 
 export const previewClip = (text: string, max = 72): string => {

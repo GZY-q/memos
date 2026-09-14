@@ -23,12 +23,27 @@ export interface NavStrings {
   saveFailed: string;
   collapse: string;
   expand: string;
+  collapseAll: string;
+  expandAll: string;
+  openAllLinks: string;
+  openAllLinksConfirm: (count: number) => string;
+  openAllLinksTitle: string;
+  openAllLinksOpened: (opened: number) => string;
+  openAllLinksBlocked: (blocked: number) => string;
   emptyGroup: string;
   searchPlaceholder: string;
   searchEmptyTitle: string;
   searchEmptyBody: string;
   clearSearch: string;
+  /** Reserved for a settings/help surface — never rendered on toolbar buttons. */
   searchKeyboardHint: string;
+  importBookmarks: string;
+  importBookmarksHint: string;
+  importEmpty: string;
+  importFailed: string;
+  importNoNew: string;
+  importTooLarge: (size: number, limit: number) => string;
+  importSuccess: (cards: number, groups: number, skipped: number) => string;
   clipboardAdd: string;
   clipboardEmpty: string;
   clipboardFailed: string;
@@ -80,12 +95,28 @@ const STRINGS: Record<"zh" | "en", NavStrings> = {
     saveFailed: "保存失败：处于离线模式，改动未保存。",
     collapse: "折叠",
     expand: "展开",
+    collapseAll: "全部折叠",
+    expandAll: "全部展开",
+    openAllLinks: "打开该分组全部链接",
+    openAllLinksTitle: "打开全部链接",
+    openAllLinksConfirm: (count: number) => `将打开 ${count} 个标签页，确定继续？`,
+    openAllLinksOpened: (opened: number) => `已打开 ${opened} 个标签页。`,
+    openAllLinksBlocked: (blocked: number) => `有 ${blocked} 个标签页被浏览器拦截，请允许弹出窗口后重试。`,
     emptyGroup: "这个分组还没有卡片。",
-    searchPlaceholder: "搜索标题、链接或备注…",
+    searchPlaceholder: "搜索卡片或网页…",
     searchEmptyTitle: "没有匹配的卡片",
-    searchEmptyBody: "没有卡片匹配当前关键词，试试别的。",
+    searchEmptyBody: "本地没有匹配卡片，可以直接网页搜索。",
     clearSearch: "清除搜索",
-    searchKeyboardHint: "/ 聚焦搜索 · Ctrl+Q 快速搜索 · ↓↑ 移动 · Enter 打开 · Esc 清除",
+    searchKeyboardHint: "/ 聚焦 · Tab 切换引擎 · ↓↑ 移动卡片 · Enter 网页搜索 · Esc 清除",
+    importBookmarks: "导入书签",
+    importBookmarksHint: "支持 Chrome / Edge 导出的 HTML 书签文件",
+    importEmpty: "没有读到有效书签，请确认是浏览器导出的 HTML 文件。",
+    importFailed: "导入失败：文件无法解析。",
+    importNoNew: "书签已全部存在，没有新卡片可导入。",
+    importTooLarge: (size: number, limit: number) =>
+      `导入后配置约 ${size} 字符，超过备忘内容上限 ${limit}。可在「实例设置 → 备忘相关」调大内容长度限制，或分批导入。`,
+    importSuccess: (cards: number, groups: number, skipped: number) =>
+      `导入完成：${cards} 张卡片${groups > 0 ? `，新建 ${groups} 个分组` : ""}${skipped > 0 ? `，跳过 ${skipped} 个重复` : ""}。`,
     clipboardAdd: "从剪贴板添加",
     clipboardEmpty: "剪贴板是空的",
     clipboardFailed: "无法读取剪贴板",
@@ -135,12 +166,31 @@ const STRINGS: Record<"zh" | "en", NavStrings> = {
     saveFailed: "Save failed: offline mode, changes were not saved.",
     collapse: "Collapse",
     expand: "Expand",
+    collapseAll: "Collapse all",
+    expandAll: "Expand all",
+    openAllLinks: "Open all links in this group",
+    openAllLinksTitle: "Open all links",
+    openAllLinksConfirm: (count: number) => `Open ${count} tabs?`,
+    openAllLinksOpened: (opened: number) => `Opened ${opened} tab${opened === 1 ? "" : "s"}.`,
+    openAllLinksBlocked: (blocked: number) =>
+      `${blocked} tab${blocked === 1 ? "" : "s"} blocked by the browser — allow popups and try again.`,
     emptyGroup: "This group has no cards yet.",
-    searchPlaceholder: "Search title, URL or note…",
+    searchPlaceholder: "Search cards or the web…",
     searchEmptyTitle: "No matching cards",
-    searchEmptyBody: "No cards match the current query. Try another.",
+    searchEmptyBody: "No local cards match. You can search the web instead.",
     clearSearch: "Clear search",
-    searchKeyboardHint: "/ to focus · Ctrl+Q quick search · ↓↑ move · Enter open · Esc clear",
+    searchKeyboardHint: "/ focus · Tab switch engine · ↓↑ move · Enter web search · Esc clear",
+    importBookmarks: "Import bookmarks",
+    importBookmarksHint: "Chrome / Edge HTML bookmark export",
+    importEmpty: "No valid bookmarks found. Use a browser-exported HTML file.",
+    importFailed: "Import failed: could not parse the file.",
+    importNoNew: "All bookmarks already exist — nothing new to import.",
+    importTooLarge: (size: number, limit: number) =>
+      `Imported config would be ~${size} characters, over the memo content limit of ${limit}. Raise “Content length limit” in Instance settings, or import in batches.`,
+    importSuccess: (cards: number, groups: number, skipped: number) =>
+      `Imported ${cards} card${cards === 1 ? "" : "s"}${groups > 0 ? `, ${groups} new group${groups === 1 ? "" : "s"}` : ""}${
+        skipped > 0 ? `, skipped ${skipped} duplicate${skipped === 1 ? "" : "s"}` : ""
+      }.`,
     clipboardAdd: "Add from clipboard",
     clipboardEmpty: "Clipboard is empty",
     clipboardFailed: "Could not read clipboard",
