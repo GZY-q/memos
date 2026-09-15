@@ -313,6 +313,106 @@ func (x *SynthesizeResponse) GetContentType() string {
 	return ""
 }
 
+type CompleteRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The user instruction for this turn (e.g. "polish this paragraph").
+	Prompt string `protobuf:"bytes,1,opt,name=prompt,proto3" json:"prompt,omitempty"`
+	// Optional. Source text to transform — usually the editor selection, or the
+	// whole draft when no selection exists.
+	Content       string `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompleteRequest) Reset() {
+	*x = CompleteRequest{}
+	mi := &file_api_v1_ai_service_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompleteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompleteRequest) ProtoMessage() {}
+
+func (x *CompleteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_ai_service_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompleteRequest.ProtoReflect.Descriptor instead.
+func (*CompleteRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_ai_service_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CompleteRequest) GetPrompt() string {
+	if x != nil {
+		return x.Prompt
+	}
+	return ""
+}
+
+func (x *CompleteRequest) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+type CompleteResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The model's reply text. Writing-assistant responses are plain markdown.
+	Text          string `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompleteResponse) Reset() {
+	*x = CompleteResponse{}
+	mi := &file_api_v1_ai_service_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompleteResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompleteResponse) ProtoMessage() {}
+
+func (x *CompleteResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_ai_service_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompleteResponse.ProtoReflect.Descriptor instead.
+func (*CompleteResponse) Descriptor() ([]byte, []int) {
+	return file_api_v1_ai_service_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *CompleteResponse) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
 var File_api_v1_ai_service_proto protoreflect.FileDescriptor
 
 const file_api_v1_ai_service_proto_rawDesc = "" +
@@ -332,12 +432,18 @@ const file_api_v1_ai_service_proto_rawDesc = "" +
 	"\x04text\x18\x01 \x01(\tB\x03\xe0A\x02R\x04text\"M\n" +
 	"\x12SynthesizeResponse\x12\x14\n" +
 	"\x05audio\x18\x01 \x01(\fR\x05audio\x12!\n" +
-	"\fcontent_type\x18\x02 \x01(\tR\vcontentType2\x80\x02\n" +
+	"\fcontent_type\x18\x02 \x01(\tR\vcontentType\"M\n" +
+	"\x0fCompleteRequest\x12\x1b\n" +
+	"\x06prompt\x18\x01 \x01(\tB\x03\xe0A\x02R\x06prompt\x12\x1d\n" +
+	"\acontent\x18\x02 \x01(\tB\x03\xe0A\x01R\acontent\"&\n" +
+	"\x10CompleteResponse\x12\x12\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text2\xf4\x02\n" +
 	"\tAIService\x12y\n" +
 	"\n" +
 	"Transcribe\x12\x1f.memos.api.v1.TranscribeRequest\x1a .memos.api.v1.TranscribeResponse\"(\xdaA\x05audio\x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/api/v1/ai:transcribe\x12x\n" +
 	"\n" +
-	"Synthesize\x12\x1f.memos.api.v1.SynthesizeRequest\x1a .memos.api.v1.SynthesizeResponse\"'\xdaA\x04text\x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/api/v1/ai:synthesizeB\xa6\x01\n" +
+	"Synthesize\x12\x1f.memos.api.v1.SynthesizeRequest\x1a .memos.api.v1.SynthesizeResponse\"'\xdaA\x04text\x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/api/v1/ai:synthesize\x12r\n" +
+	"\bComplete\x12\x1d.memos.api.v1.CompleteRequest\x1a\x1e.memos.api.v1.CompleteResponse\"'\xdaA\x06prompt\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/api/v1/ai:completeB\xa6\x01\n" +
 	"\x10com.memos.api.v1B\x0eAiServiceProtoP\x01Z0github.com/usememos/memos/proto/gen/api/v1;apiv1\xa2\x02\x03MAX\xaa\x02\fMemos.Api.V1\xca\x02\fMemos\\Api\\V1\xe2\x02\x18Memos\\Api\\V1\\GPBMetadata\xea\x02\x0eMemos::Api::V1b\x06proto3"
 
 var (
@@ -352,22 +458,26 @@ func file_api_v1_ai_service_proto_rawDescGZIP() []byte {
 	return file_api_v1_ai_service_proto_rawDescData
 }
 
-var file_api_v1_ai_service_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_api_v1_ai_service_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_api_v1_ai_service_proto_goTypes = []any{
 	(*TranscribeRequest)(nil),  // 0: memos.api.v1.TranscribeRequest
 	(*TranscriptionAudio)(nil), // 1: memos.api.v1.TranscriptionAudio
 	(*TranscribeResponse)(nil), // 2: memos.api.v1.TranscribeResponse
 	(*SynthesizeRequest)(nil),  // 3: memos.api.v1.SynthesizeRequest
 	(*SynthesizeResponse)(nil), // 4: memos.api.v1.SynthesizeResponse
+	(*CompleteRequest)(nil),    // 5: memos.api.v1.CompleteRequest
+	(*CompleteResponse)(nil),   // 6: memos.api.v1.CompleteResponse
 }
 var file_api_v1_ai_service_proto_depIdxs = []int32{
 	1, // 0: memos.api.v1.TranscribeRequest.audio:type_name -> memos.api.v1.TranscriptionAudio
 	0, // 1: memos.api.v1.AIService.Transcribe:input_type -> memos.api.v1.TranscribeRequest
 	3, // 2: memos.api.v1.AIService.Synthesize:input_type -> memos.api.v1.SynthesizeRequest
-	2, // 3: memos.api.v1.AIService.Transcribe:output_type -> memos.api.v1.TranscribeResponse
-	4, // 4: memos.api.v1.AIService.Synthesize:output_type -> memos.api.v1.SynthesizeResponse
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
+	5, // 3: memos.api.v1.AIService.Complete:input_type -> memos.api.v1.CompleteRequest
+	2, // 4: memos.api.v1.AIService.Transcribe:output_type -> memos.api.v1.TranscribeResponse
+	4, // 5: memos.api.v1.AIService.Synthesize:output_type -> memos.api.v1.SynthesizeResponse
+	6, // 6: memos.api.v1.AIService.Complete:output_type -> memos.api.v1.CompleteResponse
+	4, // [4:7] is the sub-list for method output_type
+	1, // [1:4] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -388,7 +498,7 @@ func file_api_v1_ai_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_ai_service_proto_rawDesc), len(file_api_v1_ai_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

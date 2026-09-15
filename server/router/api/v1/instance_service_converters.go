@@ -371,6 +371,7 @@ func convertInstanceAISettingFromStore(setting *storepb.InstanceAISetting) *v1pb
 		Providers:     make([]*v1pb.InstanceSetting_AIProviderConfig, 0, len(setting.Providers)),
 		Transcription: convertTranscriptionConfigFromStore(setting.GetTranscription()),
 		Tts:           convertTTSConfigFromStore(setting.GetTts()),
+		Writing:       convertWritingConfigFromStore(setting.GetWriting()),
 	}
 	for _, provider := range setting.Providers {
 		if provider == nil {
@@ -398,6 +399,7 @@ func convertInstanceAISettingToStore(setting *v1pb.InstanceSetting_AISetting) *s
 		Providers:     make([]*storepb.AIProviderConfig, 0, len(setting.Providers)),
 		Transcription: convertTranscriptionConfigToStore(setting.GetTranscription()),
 		Tts:           convertTTSConfigToStore(setting.GetTts()),
+		Writing:       convertWritingConfigToStore(setting.GetWriting()),
 	}
 	for _, provider := range setting.Providers {
 		if provider == nil {
@@ -457,5 +459,27 @@ func convertTTSConfigToStore(setting *v1pb.InstanceSetting_TTSConfig) *storepb.T
 		ProviderId: setting.GetProviderId(),
 		Speaker:    setting.GetSpeaker(),
 		Model:      setting.GetModel(),
+	}
+}
+
+func convertWritingConfigFromStore(setting *storepb.WritingConfig) *v1pb.InstanceSetting_WritingConfig {
+	if setting == nil {
+		return nil
+	}
+	return &v1pb.InstanceSetting_WritingConfig{
+		ProviderId:   setting.GetProviderId(),
+		Model:        setting.GetModel(),
+		SystemPrompt: setting.GetSystemPrompt(),
+	}
+}
+
+func convertWritingConfigToStore(setting *v1pb.InstanceSetting_WritingConfig) *storepb.WritingConfig {
+	if setting == nil {
+		return nil
+	}
+	return &storepb.WritingConfig{
+		ProviderId:   setting.GetProviderId(),
+		Model:        setting.GetModel(),
+		SystemPrompt: setting.GetSystemPrompt(),
 	}
 }

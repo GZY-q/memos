@@ -17,4 +17,7 @@ var (
 	// ErrTTSNotSupported indicates that the provider does not have a dedicated
 	// text-to-speech endpoint in this codebase.
 	ErrTTSNotSupported = errors.New("provider does not support text-to-speech capability")
+	// ErrChatNotSupported indicates that the provider does not speak the
+	// OpenAI Chat Completions protocol used by the writing assistant.
+	ErrChatNotSupported = errors.New("provider does not support chat completion capability")
 )

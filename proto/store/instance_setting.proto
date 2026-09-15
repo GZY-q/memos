@@ -195,6 +195,10 @@ message InstanceAISetting {
   // tts is the text-to-speech feature configuration.
   // When unset or tts.provider_id is empty, TTS is disabled.
   TTSConfig tts = 3;
+
+  // writing is the AI writing-assistant feature configuration.
+  // When unset or writing.provider_id is empty, writing is disabled.
+  WritingConfig writing = 4;
 }
 
 message AIProviderConfig {
@@ -260,6 +264,26 @@ message TTSConfig {
   // Empty string falls back to the engine default.
   // VOLCENGINE_ARK example: seed-tts-2.0 (sent as X-Api-Resource-Id).
   string model = 3;
+}
+
+// WritingConfig configures the AI writing-assistant feature.
+// The assistant speaks the OpenAI Chat Completions protocol, so any
+// OpenAI-compatible endpoint (OpenAI, DeepSeek, Ollama, vLLM, …) works
+// through an OPENAI-type provider with a custom endpoint.
+message WritingConfig {
+  // provider_id references an entry in InstanceAISetting.providers[].id.
+  // Empty string means writing is disabled.
+  string provider_id = 1;
+
+  // model is the provider-specific chat model identifier.
+  // Empty string falls back to the engine default.
+  // OPENAI examples: gpt-4o-mini, gpt-4o, deepseek-chat, qwen-plus.
+  string model = 2;
+
+  // system_prompt is an instance-level system instruction applied to every
+  // writing-assistant call. Empty string uses the built-in writing assistant
+  // system prompt.
+  string system_prompt = 3;
 }
 
 enum InstanceAccessMode {

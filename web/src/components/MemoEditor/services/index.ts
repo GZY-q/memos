@@ -4,3 +4,4 @@ export * from "./memoService";
 export * from "./transcriptionService";
 export * from "./uploadService";
 export * from "./validationService";
+export * from "./writingService";

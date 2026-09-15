@@ -6,6 +6,33 @@ info:
     title: ""
     version: 0.0.1
 paths:
+    /api/v1/ai:complete:
+        post:
+            tags:
+                - AIService
+            description: |-
+                Complete runs one writing-assistant turn against an OpenAI-compatible
+                 chat-completions endpoint configured on the instance.
+            operationId: AIService_Complete
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CompleteRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CompleteResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/ai:synthesize:
         post:
             tags:
@@ -3242,6 +3269,25 @@ components:
                      };
 
                      // ...
+        CompleteRequest:
+            required:
+                - prompt
+            type: object
+            properties:
+                prompt:
+                    type: string
+                    description: Required. The user instruction for this turn (e.g. "polish this paragraph").
+                content:
+                    type: string
+                    description: |-
+                        Optional. Source text to transform — usually the editor selection, or the
+                         whole draft when no selection exists.
+        CompleteResponse:
+            type: object
+            properties:
+                text:
+                    type: string
+                    description: The model's reply text. Writing-assistant responses are plain markdown.
         CreateLinkedIdentityRequest:
             required:
                 - parent
@@ -3494,6 +3540,12 @@ components:
                     description: |-
                         tts is the text-to-speech feature configuration.
                          When unset or tts.provider_id is empty, TTS is disabled.
+                writing:
+                    allOf:
+                        - $ref: '#/components/schemas/InstanceSetting_WritingConfig'
+                    description: |-
+                        writing is the AI writing-assistant feature configuration.
+                         When unset or writing.provider_id is empty, writing is disabled.
             description: AI provider configuration settings.
         InstanceSetting_AccessSetting:
             type: object
@@ -3688,6 +3740,27 @@ components:
                     type: string
                     description: prompt is a default spelling/vocabulary hint passed to the provider.
             description: TranscriptionConfig configures the speech-to-text feature.
+        InstanceSetting_WritingConfig:
+            type: object
+            properties:
+                providerId:
+                    type: string
+                    description: |-
+                        provider_id references an entry in AISetting.providers[].id.
+                         Empty string means writing is disabled.
+                model:
+                    type: string
+                    description: |-
+                        model is the provider-specific chat model identifier.
+                         Empty string falls back to the engine default.
+                systemPrompt:
+                    type: string
+                    description: |-
+                        system_prompt is an instance-level system instruction applied to every
+                         writing-assistant call. Empty string uses the built-in default.
+            description: |-
+                WritingConfig configures the AI writing-assistant feature.
+                 Uses the OpenAI Chat Completions protocol against any compatible endpoint.
         InstanceStats:
             type: object
             properties:

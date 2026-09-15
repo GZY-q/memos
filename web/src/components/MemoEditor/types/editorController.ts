@@ -27,6 +27,13 @@ export interface EditorController {
   /** Select the entire document (used by tests and select-all flows). */
   selectAll(): void;
   /**
+   * Current selection range and selected text. When nothing is selected the
+   * range is empty (from === to) and text is "".
+   */
+  getSelection(): { from: number; to: number; text: string };
+  /** Replace the current selection (or insert at the cursor when empty). */
+  replaceSelection(text: string): void;
+  /**
    * Rich-formatting capability driving the focus-mode FormattingToolbar.
    * Editor always sets it; the field is optional so the contract stays
    * decoupled from any one editor implementation.

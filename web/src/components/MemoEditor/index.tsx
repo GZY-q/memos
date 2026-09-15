@@ -5,10 +5,17 @@ import { useInstance } from "@/contexts/InstanceContext";
 import { useLocalStorage } from "@/hooks";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { cn } from "@/lib/utils";
-import { InstanceSetting_Key } from "@/types/proto/api/v1/instance_service_pb";
+import { InstanceSetting_AIProviderType, InstanceSetting_Key } from "@/types/proto/api/v1/instance_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { convertVisibilityFromString } from "@/utils/memo";
-import { AudioRecorderPanel, EditorContent, EditorMetadata, FocusModeOverlay, TimestampPopover } from "./components";
+import {
+  AudioRecorderPanel,
+  EditorContent,
+  EditorMetadata,
+  FocusModeOverlay,
+  TimestampPopover,
+  WritingAssistantDialog,
+} from "./components";
 import { FOCUS_MODE_STYLES, FORMATTING_TOOLBAR_STORAGE_KEY } from "./constants";
 import {
   splitInlineLocalFiles,
@@ -65,6 +72,7 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
   const { aiSetting, fetchSetting } = useInstance();
   const [isAudioRecorderOpen, setIsAudioRecorderOpen] = useState(false);
   const [isTranscribingAudio, setIsTranscribingAudio] = useState(false);
+  const [isWritingAssistantOpen, setIsWritingAssistantOpen] = useState(false);
   const { createBlobUrl } = useBlobUrls();
   const saveMediaMetadata = userGeneralSetting?.saveMediaMetadata ?? false;
   const inlineImageUpload = useInlineImageUpload(editorRef);
@@ -82,6 +90,13 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
     const provider = aiSetting.providers.find((p) => p.id === providerId);
     return Boolean(provider?.apiKeySet);
   }, [aiSetting.providers, aiSetting.transcription?.providerId]);
+
+  const canWrite = useMemo(() => {
+    const providerId = aiSetting.writing?.providerId ?? "";
+    if (!providerId) return false;
+    const provider = aiSetting.providers.find((p) => p.id === providerId);
+    return Boolean(provider?.apiKeySet && provider?.type === InstanceSetting_AIProviderType.OPENAI);
+  }, [aiSetting.providers, aiSetting.writing?.providerId]);
 
   // Get default visibility from user settings
   const defaultVisibility = userGeneralSetting?.memoVisibility ? convertVisibilityFromString(userGeneralSetting.memoVisibility) : undefined;
@@ -370,11 +385,21 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
             parentMemoName={parentMemoName}
             space={editorSpace}
             onAudioRecorderClick={handleAudioRecorderClick}
+            onWritingClick={() => setIsWritingAssistantOpen(true)}
+            writingDisabled={!canWrite}
             viewToggles={viewToggles}
             onInsertImages={handleInsertImages}
           />
         </div>
       </div>
+
+      <WritingAssistantDialog
+        open={isWritingAssistantOpen}
+        onOpenChange={setIsWritingAssistantOpen}
+        editorRef={editorRef}
+        disabled={!canWrite}
+        disabledReason={canWrite ? undefined : t("editor.writing.not-configured")}
+      />
     </>
   );
 };

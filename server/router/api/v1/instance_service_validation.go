@@ -133,6 +133,9 @@ func (s *APIV1Service) prepareInstanceAISettingForUpdate(ctx context.Context, se
 	if err := preparePersistedTTSConfig(setting, existing); err != nil {
 		return err
 	}
+	if err := preparePersistedWritingConfig(setting, existing); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -212,6 +215,50 @@ func preparePersistedTTSConfig(setting *storepb.InstanceAISetting, existing *sto
 	}
 	if len(cfg.Model) > maxTTSConfigModelLength {
 		return errors.Errorf("tts model is too long; maximum length is %d characters", maxTTSConfigModelLength)
+	}
+	return nil
+}
+
+func preparePersistedWritingConfig(setting *storepb.InstanceAISetting, existing *storepb.InstanceAISetting) error {
+	// Preserve the previously stored writing config when the request omits it,
+	// matching the same "absence == keep" semantics used for API keys,
+	// transcription, and TTS.
+	if setting.Writing == nil && existing != nil {
+		setting.Writing = existing.GetWriting()
+	}
+	if setting.Writing == nil {
+		return nil
+	}
+
+	cfg := setting.Writing
+	cfg.ProviderId = strings.TrimSpace(cfg.ProviderId)
+	cfg.Model = strings.TrimSpace(cfg.Model)
+	cfg.SystemPrompt = strings.TrimSpace(cfg.SystemPrompt)
+
+	if cfg.ProviderId != "" {
+		referenced := false
+		var providerType storepb.AIProviderType
+		for _, provider := range setting.Providers {
+			if provider != nil && provider.Id == cfg.ProviderId {
+				referenced = true
+				providerType = provider.Type
+				break
+			}
+		}
+		if !referenced {
+			return errors.Errorf("writing provider_id %q does not reference any configured provider", cfg.ProviderId)
+		}
+		// The writing assistant speaks OpenAI Chat Completions only.
+		if providerType != storepb.AIProviderType_OPENAI {
+			return errors.Errorf("writing provider %q must be an OPENAI-compatible provider", cfg.ProviderId)
+		}
+	}
+
+	if len(cfg.Model) > maxWritingConfigModelLength {
+		return errors.Errorf("writing model is too long; maximum length is %d characters", maxWritingConfigModelLength)
+	}
+	if len(cfg.SystemPrompt) > maxWritingConfigSystemPromptLength {
+		return errors.Errorf("writing system prompt is too long; maximum length is %d characters", maxWritingConfigSystemPromptLength)
 	}
 	return nil
 }

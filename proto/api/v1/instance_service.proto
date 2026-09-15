@@ -311,6 +311,10 @@ message InstanceSetting {
     // tts is the text-to-speech feature configuration.
     // When unset or tts.provider_id is empty, TTS is disabled.
     TTSConfig tts = 3;
+
+    // writing is the AI writing-assistant feature configuration.
+    // When unset or writing.provider_id is empty, writing is disabled.
+    WritingConfig writing = 4;
   }
 
   // AIProviderConfig represents one callable AI provider connection.
@@ -373,6 +377,22 @@ message InstanceSetting {
     // Empty string falls back to the engine default
     // (seed-tts-2.0 for VOLCENGINE_ARK providers).
     string model = 3;
+  }
+
+  // WritingConfig configures the AI writing-assistant feature.
+  // Uses the OpenAI Chat Completions protocol against any compatible endpoint.
+  message WritingConfig {
+    // provider_id references an entry in AISetting.providers[].id.
+    // Empty string means writing is disabled.
+    string provider_id = 1;
+
+    // model is the provider-specific chat model identifier.
+    // Empty string falls back to the engine default.
+    string model = 2;
+
+    // system_prompt is an instance-level system instruction applied to every
+    // writing-assistant call. Empty string uses the built-in default.
+    string system_prompt = 3;
   }
 
   // Access policy configuration for the instance.

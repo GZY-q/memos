@@ -14,6 +14,8 @@ import (
 	"github.com/usememos/memos/internal/ai"
 	"github.com/usememos/memos/internal/ai/audiollm"
 	audiollmgemini "github.com/usememos/memos/internal/ai/audiollm/gemini"
+	"github.com/usememos/memos/internal/ai/chat"
+	chatopenai "github.com/usememos/memos/internal/ai/chat/openai"
 	"github.com/usememos/memos/internal/ai/stt"
 	sttopenai "github.com/usememos/memos/internal/ai/stt/openai"
 	"github.com/usememos/memos/internal/ai/tts"
@@ -27,6 +29,8 @@ const (
 	maxTranscriptionAudioSizeBytes = 25 * MebiByte
 	maxTranscriptionFilenameLength = 255
 	maxSynthesizeTextLength        = 5000
+	maxCompletePromptRunes         = 4000
+	maxCompleteContentRunes        = 20000
 )
 
 var supportedTranscriptionContentTypes = map[string]bool{
@@ -200,6 +204,102 @@ func (s *APIV1Service) Synthesize(ctx context.Context, request *v1pb.SynthesizeR
 		Audio:       audio,
 		ContentType: contentType,
 	}, nil
+}
+
+// Complete runs one writing-assistant turn against an OpenAI-compatible
+// chat-completions endpoint configured on the instance.
+func (s *APIV1Service) Complete(ctx context.Context, request *v1pb.CompleteRequest) (*v1pb.CompleteResponse, error) {
+	user, err := s.fetchCurrentUser(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
+	}
+	if user == nil {
+		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
+	}
+
+	prompt := strings.TrimSpace(request.GetPrompt())
+	if prompt == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "prompt is required")
+	}
+	if len([]rune(prompt)) > maxCompletePromptRunes {
+		return nil, status.Errorf(codes.InvalidArgument, "prompt is too long; maximum length is %d characters", maxCompletePromptRunes)
+	}
+	content := request.GetContent()
+	if len([]rune(content)) > maxCompleteContentRunes {
+		return nil, status.Errorf(codes.InvalidArgument, "content is too long; maximum length is %d characters", maxCompleteContentRunes)
+	}
+
+	aiSetting, err := s.Store.GetInstanceAISetting(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get AI setting: %v", err)
+	}
+	persisted := aiSetting.GetWriting()
+
+	providerID := persisted.GetProviderId()
+	if providerID == "" {
+		return nil, status.Errorf(codes.FailedPrecondition, "writing assistant is not configured")
+	}
+
+	provider, err := s.resolveAIProvider(aiSetting, providerID)
+	if err != nil {
+		return nil, err
+	}
+
+	model := persisted.GetModel()
+	if model == "" {
+		defaultModel, err := ai.DefaultWritingModel(provider.Type)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "%v", err)
+		}
+		model = defaultModel
+	}
+
+	systemPrompt := strings.TrimSpace(persisted.GetSystemPrompt())
+	if systemPrompt == "" {
+		systemPrompt = ai.DefaultWritingSystemPrompt
+	}
+	userMessage := buildWritingUserMessage(prompt, content)
+
+	var text string
+	switch provider.Type {
+	case ai.ProviderOpenAI:
+		text, err = s.completeViaChat(ctx, provider, chat.Request{
+			Model:  model,
+			System: systemPrompt,
+			User:   userMessage,
+		})
+	default:
+		return nil, status.Errorf(codes.FailedPrecondition,
+			"provider type %q is not supported for the writing assistant", provider.Type)
+	}
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to complete writing request: %v", err)
+	}
+	return &v1pb.CompleteResponse{Text: text}, nil
+}
+
+func (*APIV1Service) completeViaChat(
+	ctx context.Context,
+	provider ai.ProviderConfig,
+	req chat.Request,
+) (string, error) {
+	completer, err := chatopenai.New(provider, chat.ApplyOptions(nil))
+	if err != nil {
+		return "", errors.Wrap(err, "failed to create chat completer")
+	}
+	resp, err := completer.Complete(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	return resp.Text, nil
+}
+
+func buildWritingUserMessage(prompt, content string) string {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return prompt
+	}
+	return "Instruction:\n" + prompt + "\n\nText:\n" + content
 }
 
 func (*APIV1Service) synthesizeViaArk(

@@ -65,6 +65,8 @@ export interface EditorToolbarProps {
   /** The Space that owns the memo being created or edited, if any. */
   space?: string;
   onAudioRecorderClick: () => void;
+  onWritingClick?: () => void;
+  writingDisabled?: boolean;
   viewToggles?: EditorViewToggles;
   onInsertImages: (files: File[]) => void;
 }

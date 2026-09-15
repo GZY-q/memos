@@ -31,6 +31,8 @@ function makeController(opts: { active?: Partial<ActiveFormatState> } = {}) {
     setCursor: vi.fn(),
     scrollToCursor: () => {},
     selectAll: () => {},
+    getSelection: () => ({ from: 0, to: 0, text: "" }),
+    replaceSelection: vi.fn(),
     createUploadAnchor: vi.fn(),
     updateUploadAnchor: vi.fn(),
     resolveUploadAnchor: vi.fn(),

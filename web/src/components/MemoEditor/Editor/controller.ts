@@ -71,6 +71,19 @@ export function createController(view: EditorView, formatting: FormattingControl
     },
     scrollToCursor: () => view.dispatch({ effects: EditorView.scrollIntoView(view.state.selection.main.head) }),
     selectAll: () => view.dispatch({ selection: EditorSelection.range(0, view.state.doc.length) }),
+    getSelection: () => {
+      const { from, to } = view.state.selection.main;
+      return { from, to, text: view.state.doc.sliceString(from, to) };
+    },
+    replaceSelection: (text) => {
+      const { from, to } = view.state.selection.main;
+      view.dispatch({
+        changes: { from, to, insert: text },
+        selection: { anchor: from + text.length },
+        scrollIntoView: true,
+      });
+      view.focus();
+    },
     formatting,
   };
 }

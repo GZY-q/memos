@@ -26,6 +26,16 @@ service AIService {
     };
     option (google.api.method_signature) = "text";
   }
+
+  // Complete runs one writing-assistant turn against an OpenAI-compatible
+  // chat-completions endpoint configured on the instance.
+  rpc Complete(CompleteRequest) returns (CompleteResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/ai:complete"
+      body: "*"
+    };
+    option (google.api.method_signature) = "prompt";
+  }
 }
 
 message TranscribeRequest {
@@ -65,4 +75,18 @@ message SynthesizeResponse {
 
   // MIME type of the generated audio, e.g. "audio/mpeg".
   string content_type = 2;
+}
+
+message CompleteRequest {
+  // Required. The user instruction for this turn (e.g. "polish this paragraph").
+  string prompt = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Optional. Source text to transform — usually the editor selection, or the
+  // whole draft when no selection exists.
+  string content = 2 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message CompleteResponse {
+  // The model's reply text. Writing-assistant responses are plain markdown.
+  string text = 1;
 }

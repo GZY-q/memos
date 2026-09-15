@@ -28,6 +28,8 @@ const (
 	maxTranscriptionPromptLength      = 4096
 	maxTTSSpeakerLength               = 128
 	maxTTSModelLength                 = 128
+	maxWritingModelLength             = 256
+	maxWritingSystemPromptLength      = 8192
 )
 
 var (
@@ -365,6 +367,19 @@ func normalizeDeploymentAISetting(setting *storepb.InstanceAISetting) error {
 		}
 		if len(tts.Speaker) > maxTTSSpeakerLength || len(tts.Model) > maxTTSModelLength {
 			return errors.New("aiSetting tts configuration exceeds a supported length limit")
+		}
+	}
+	if writing := setting.Writing; writing != nil {
+		writing.ProviderId = strings.TrimSpace(writing.ProviderId)
+		writing.Model = strings.TrimSpace(writing.Model)
+		writing.SystemPrompt = strings.TrimSpace(writing.SystemPrompt)
+		if writing.ProviderId != "" {
+			if _, ok := providers[writing.ProviderId]; !ok {
+				return errors.Errorf("aiSetting writing providerId %q does not reference a provider", writing.ProviderId)
+			}
+		}
+		if len(writing.Model) > maxWritingModelLength || len(writing.SystemPrompt) > maxWritingSystemPromptLength {
+			return errors.New("aiSetting writing configuration exceeds a supported length limit")
 		}
 	}
 	return nil

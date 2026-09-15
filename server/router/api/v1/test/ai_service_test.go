@@ -282,3 +282,108 @@ func TestTranscribe(t *testing.T) {
 		require.Contains(t, err.Error(), "transcription is not configured")
 	})
 }
+
+func TestComplete(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("requires authentication", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		_, err := ts.Service.Complete(ctx, &v1pb.CompleteRequest{Prompt: "polish"})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "user not authenticated")
+	})
+
+	t.Run("completes using persisted writing setting", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		user, err := ts.CreateRegularUser(ctx, "writer")
+		require.NoError(t, err)
+		userCtx := ts.CreateUserContext(ctx, user.ID)
+
+		var gotBody map[string]any
+		openAIServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/chat/completions", r.URL.Path)
+			require.Equal(t, "Bearer sk-test", r.Header.Get("Authorization"))
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&gotBody))
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"id": "chatcmpl-1",
+				"choices": []map[string]any{
+					{
+						"index":         0,
+						"finish_reason": "stop",
+						"message": map[string]any{
+							"role":    "assistant",
+							"content": "polished text",
+						},
+					},
+				},
+			}))
+		}))
+		defer openAIServer.Close()
+
+		_, err = ts.Store.UpsertInstanceSetting(ctx, &storepb.InstanceSetting{
+			Key: storepb.InstanceSettingKey_AI,
+			Value: &storepb.InstanceSetting_AiSetting{
+				AiSetting: &storepb.InstanceAISetting{
+					Providers: []*storepb.AIProviderConfig{
+						{
+							Id:       "openai-main",
+							Title:    "OpenAI",
+							Type:     storepb.AIProviderType_OPENAI,
+							Endpoint: openAIServer.URL,
+							ApiKey:   "sk-test",
+						},
+					},
+					Writing: &storepb.WritingConfig{
+						ProviderId:   "openai-main",
+						Model:        "gpt-4o-mini",
+						SystemPrompt: "Return only the rewritten markdown.",
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		resp, err := ts.Service.Complete(userCtx, &v1pb.CompleteRequest{
+			Prompt:  "Polish this paragraph",
+			Content: "hello world",
+		})
+		require.NoError(t, err)
+		require.Equal(t, "polished text", resp.Text)
+
+		require.Equal(t, "gpt-4o-mini", gotBody["model"])
+		messages, ok := gotBody["messages"].([]any)
+		require.True(t, ok)
+		require.Len(t, messages, 2)
+	})
+
+	t.Run("returns FailedPrecondition when writing is not configured", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		user, err := ts.CreateRegularUser(ctx, "writer-empty")
+		require.NoError(t, err)
+		userCtx := ts.CreateUserContext(ctx, user.ID)
+
+		_, err = ts.Service.Complete(userCtx, &v1pb.CompleteRequest{Prompt: "polish"})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "writing assistant is not configured")
+	})
+
+	t.Run("rejects empty prompt", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		user, err := ts.CreateRegularUser(ctx, "writer-blank")
+		require.NoError(t, err)
+		userCtx := ts.CreateUserContext(ctx, user.ID)
+
+		_, err = ts.Service.Complete(userCtx, &v1pb.CompleteRequest{Prompt: "  "})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "prompt is required")
+	})
+}

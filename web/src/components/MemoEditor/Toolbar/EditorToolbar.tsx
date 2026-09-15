@@ -1,4 +1,4 @@
-import { CheckIcon, CornerDownLeftIcon, LoaderIcon, WifiOffIcon } from "lucide-react";
+import { CheckIcon, CornerDownLeftIcon, LoaderIcon, SparklesIcon, WifiOffIcon } from "lucide-react";
 import type { FC } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -38,6 +38,8 @@ export const EditorToolbar: FC<EditorToolbarProps> = ({
   parentMemoName,
   space,
   onAudioRecorderClick,
+  onWritingClick,
+  writingDisabled,
   viewToggles,
   onInsertImages,
 }) => {
@@ -102,6 +104,24 @@ export const EditorToolbar: FC<EditorToolbarProps> = ({
           viewToggles={viewToggles}
           onInsertImages={onInsertImages}
         />
+        {onWritingClick && (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  aria-label={t("editor.writing.title")}
+                  disabled={committing || writingDisabled}
+                  onClick={onWritingClick}
+                />
+              }
+            >
+              <SparklesIcon className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{t("editor.writing.title")}</TooltipContent>
+          </Tooltip>
+        )}
         <VisibilitySelector value={visibility} space={space} onChange={handleVisibilityChange} />
         {!isOnline && (
           <span

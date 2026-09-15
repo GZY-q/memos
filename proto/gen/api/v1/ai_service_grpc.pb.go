@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	AIService_Transcribe_FullMethodName = "/memos.api.v1.AIService/Transcribe"
 	AIService_Synthesize_FullMethodName = "/memos.api.v1.AIService/Synthesize"
+	AIService_Complete_FullMethodName   = "/memos.api.v1.AIService/Complete"
 )
 
 // AIServiceClient is the client API for AIService service.
@@ -31,6 +32,9 @@ type AIServiceClient interface {
 	Transcribe(ctx context.Context, in *TranscribeRequest, opts ...grpc.CallOption) (*TranscribeResponse, error)
 	// Synthesize converts text to speech audio using an instance AI provider.
 	Synthesize(ctx context.Context, in *SynthesizeRequest, opts ...grpc.CallOption) (*SynthesizeResponse, error)
+	// Complete runs one writing-assistant turn against an OpenAI-compatible
+	// chat-completions endpoint configured on the instance.
+	Complete(ctx context.Context, in *CompleteRequest, opts ...grpc.CallOption) (*CompleteResponse, error)
 }
 
 type aIServiceClient struct {
@@ -61,6 +65,16 @@ func (c *aIServiceClient) Synthesize(ctx context.Context, in *SynthesizeRequest,
 	return out, nil
 }
 
+func (c *aIServiceClient) Complete(ctx context.Context, in *CompleteRequest, opts ...grpc.CallOption) (*CompleteResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CompleteResponse)
+	err := c.cc.Invoke(ctx, AIService_Complete_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AIServiceServer is the server API for AIService service.
 // All implementations must embed UnimplementedAIServiceServer
 // for forward compatibility.
@@ -69,6 +83,9 @@ type AIServiceServer interface {
 	Transcribe(context.Context, *TranscribeRequest) (*TranscribeResponse, error)
 	// Synthesize converts text to speech audio using an instance AI provider.
 	Synthesize(context.Context, *SynthesizeRequest) (*SynthesizeResponse, error)
+	// Complete runs one writing-assistant turn against an OpenAI-compatible
+	// chat-completions endpoint configured on the instance.
+	Complete(context.Context, *CompleteRequest) (*CompleteResponse, error)
 	mustEmbedUnimplementedAIServiceServer()
 }
 
@@ -84,6 +101,9 @@ func (UnimplementedAIServiceServer) Transcribe(context.Context, *TranscribeReque
 }
 func (UnimplementedAIServiceServer) Synthesize(context.Context, *SynthesizeRequest) (*SynthesizeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Synthesize not implemented")
+}
+func (UnimplementedAIServiceServer) Complete(context.Context, *CompleteRequest) (*CompleteResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Complete not implemented")
 }
 func (UnimplementedAIServiceServer) mustEmbedUnimplementedAIServiceServer() {}
 func (UnimplementedAIServiceServer) testEmbeddedByValue()                   {}
@@ -142,6 +162,24 @@ func _AIService_Synthesize_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AIService_Complete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompleteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AIServiceServer).Complete(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AIService_Complete_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AIServiceServer).Complete(ctx, req.(*CompleteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AIService_ServiceDesc is the grpc.ServiceDesc for AIService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -156,6 +194,10 @@ var AIService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Synthesize",
 			Handler:    _AIService_Synthesize_Handler,
+		},
+		{
+			MethodName: "Complete",
+			Handler:    _AIService_Complete_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

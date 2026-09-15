@@ -22,6 +22,8 @@ const (
 	maxTranscriptionConfigPromptLength   = 4096
 	maxTTSConfigSpeakerLength            = 128
 	maxTTSConfigModelLength              = 128
+	maxWritingConfigModelLength          = 256
+	maxWritingConfigSystemPromptLength   = 8192
 	maxBatchGetInstanceSettings          = 100
 )
 

@@ -37,6 +37,8 @@ const (
 	AIServiceTranscribeProcedure = "/memos.api.v1.AIService/Transcribe"
 	// AIServiceSynthesizeProcedure is the fully-qualified name of the AIService's Synthesize RPC.
 	AIServiceSynthesizeProcedure = "/memos.api.v1.AIService/Synthesize"
+	// AIServiceCompleteProcedure is the fully-qualified name of the AIService's Complete RPC.
+	AIServiceCompleteProcedure = "/memos.api.v1.AIService/Complete"
 )
 
 // AIServiceClient is a client for the memos.api.v1.AIService service.
@@ -45,6 +47,9 @@ type AIServiceClient interface {
 	Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error)
 	// Synthesize converts text to speech audio using an instance AI provider.
 	Synthesize(context.Context, *connect.Request[v1.SynthesizeRequest]) (*connect.Response[v1.SynthesizeResponse], error)
+	// Complete runs one writing-assistant turn against an OpenAI-compatible
+	// chat-completions endpoint configured on the instance.
+	Complete(context.Context, *connect.Request[v1.CompleteRequest]) (*connect.Response[v1.CompleteResponse], error)
 }
 
 // NewAIServiceClient constructs a client for the memos.api.v1.AIService service. By default, it
@@ -70,6 +75,12 @@ func NewAIServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...c
 			connect.WithSchema(aIServiceMethods.ByName("Synthesize")),
 			connect.WithClientOptions(opts...),
 		),
+		complete: connect.NewClient[v1.CompleteRequest, v1.CompleteResponse](
+			httpClient,
+			baseURL+AIServiceCompleteProcedure,
+			connect.WithSchema(aIServiceMethods.ByName("Complete")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -77,6 +88,7 @@ func NewAIServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...c
 type aIServiceClient struct {
 	transcribe *connect.Client[v1.TranscribeRequest, v1.TranscribeResponse]
 	synthesize *connect.Client[v1.SynthesizeRequest, v1.SynthesizeResponse]
+	complete   *connect.Client[v1.CompleteRequest, v1.CompleteResponse]
 }
 
 // Transcribe calls memos.api.v1.AIService.Transcribe.
@@ -89,12 +101,20 @@ func (c *aIServiceClient) Synthesize(ctx context.Context, req *connect.Request[v
 	return c.synthesize.CallUnary(ctx, req)
 }
 
+// Complete calls memos.api.v1.AIService.Complete.
+func (c *aIServiceClient) Complete(ctx context.Context, req *connect.Request[v1.CompleteRequest]) (*connect.Response[v1.CompleteResponse], error) {
+	return c.complete.CallUnary(ctx, req)
+}
+
 // AIServiceHandler is an implementation of the memos.api.v1.AIService service.
 type AIServiceHandler interface {
 	// Transcribe transcribes an audio file using an instance AI provider.
 	Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error)
 	// Synthesize converts text to speech audio using an instance AI provider.
 	Synthesize(context.Context, *connect.Request[v1.SynthesizeRequest]) (*connect.Response[v1.SynthesizeResponse], error)
+	// Complete runs one writing-assistant turn against an OpenAI-compatible
+	// chat-completions endpoint configured on the instance.
+	Complete(context.Context, *connect.Request[v1.CompleteRequest]) (*connect.Response[v1.CompleteResponse], error)
 }
 
 // NewAIServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -116,12 +136,20 @@ func NewAIServiceHandler(svc AIServiceHandler, opts ...connect.HandlerOption) (s
 		connect.WithSchema(aIServiceMethods.ByName("Synthesize")),
 		connect.WithHandlerOptions(opts...),
 	)
+	aIServiceCompleteHandler := connect.NewUnaryHandler(
+		AIServiceCompleteProcedure,
+		svc.Complete,
+		connect.WithSchema(aIServiceMethods.ByName("Complete")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/memos.api.v1.AIService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AIServiceTranscribeProcedure:
 			aIServiceTranscribeHandler.ServeHTTP(w, r)
 		case AIServiceSynthesizeProcedure:
 			aIServiceSynthesizeHandler.ServeHTTP(w, r)
+		case AIServiceCompleteProcedure:
+			aIServiceCompleteHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -137,4 +165,8 @@ func (UnimplementedAIServiceHandler) Transcribe(context.Context, *connect.Reques
 
 func (UnimplementedAIServiceHandler) Synthesize(context.Context, *connect.Request[v1.SynthesizeRequest]) (*connect.Response[v1.SynthesizeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AIService.Synthesize is not implemented"))
+}
+
+func (UnimplementedAIServiceHandler) Complete(context.Context, *connect.Request[v1.CompleteRequest]) (*connect.Response[v1.CompleteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AIService.Complete is not implemented"))
 }

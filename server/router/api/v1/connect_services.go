@@ -714,6 +714,14 @@ func (s *ConnectServiceHandler) Synthesize(ctx context.Context, req *connect.Req
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) Complete(ctx context.Context, req *connect.Request[v1pb.CompleteRequest]) (*connect.Response[v1pb.CompleteResponse], error) {
+	resp, err := s.APIV1Service.Complete(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 // IdentityProviderService
 
 func (s *ConnectServiceHandler) ListIdentityProviders(ctx context.Context, req *connect.Request[v1pb.ListIdentityProvidersRequest]) (*connect.Response[v1pb.ListIdentityProvidersResponse], error) {

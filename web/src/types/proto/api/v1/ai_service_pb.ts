@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file api/v1/ai_service.proto.
  */
 export const file_api_v1_ai_service: GenFile = /*@__PURE__*/
-  fileDesc("ChdhcGkvdjEvYWlfc2VydmljZS5wcm90bxIMbWVtb3MuYXBpLnYxIkkKEVRyYW5zY3JpYmVSZXF1ZXN0EjQKBWF1ZGlvGAEgASgLMiAubWVtb3MuYXBpLnYxLlRyYW5zY3JpcHRpb25BdWRpb0ID4EECIncKElRyYW5zY3JpcHRpb25BdWRpbxIWCgdjb250ZW50GAEgASgMQgPgQQRIABINCgN1cmkYAiABKAlIABIVCghmaWxlbmFtZRgDIAEoCUID4EEBEhkKDGNvbnRlbnRfdHlwZRgEIAEoCUID4EEBQggKBnNvdXJjZSIiChJUcmFuc2NyaWJlUmVzcG9uc2USDAoEdGV4dBgBIAEoCSImChFTeW50aGVzaXplUmVxdWVzdBIRCgR0ZXh0GAEgASgJQgPgQQIiOQoSU3ludGhlc2l6ZVJlc3BvbnNlEg0KBWF1ZGlvGAEgASgMEhQKDGNvbnRlbnRfdHlwZRgCIAEoCTKAAgoJQUlTZXJ2aWNlEnkKClRyYW5zY3JpYmUSHy5tZW1vcy5hcGkudjEuVHJhbnNjcmliZVJlcXVlc3QaIC5tZW1vcy5hcGkudjEuVHJhbnNjcmliZVJlc3BvbnNlIijaQQVhdWRpb4LT5JMCGjoBKiIVL2FwaS92MS9haTp0cmFuc2NyaWJlEngKClN5bnRoZXNpemUSHy5tZW1vcy5hcGkudjEuU3ludGhlc2l6ZVJlcXVlc3QaIC5tZW1vcy5hcGkudjEuU3ludGhlc2l6ZVJlc3BvbnNlIifaQQR0ZXh0gtPkkwIaOgEqIhUvYXBpL3YxL2FpOnN5bnRoZXNpemVCpgEKEGNvbS5tZW1vcy5hcGkudjFCDkFpU2VydmljZVByb3RvUAFaMGdpdGh1Yi5jb20vdXNlbWVtb3MvbWVtb3MvcHJvdG8vZ2VuL2FwaS92MTthcGl2MaICA01BWKoCDE1lbW9zLkFwaS5WMcoCDE1lbW9zXEFwaVxWMeICGE1lbW9zXEFwaVxWMVxHUEJNZXRhZGF0YeoCDk1lbW9zOjpBcGk6OlYxYgZwcm90bzM", [file_google_api_annotations, file_google_api_client, file_google_api_field_behavior]);
+  fileDesc("ChdhcGkvdjEvYWlfc2VydmljZS5wcm90bxIMbWVtb3MuYXBpLnYxIkkKEVRyYW5zY3JpYmVSZXF1ZXN0EjQKBWF1ZGlvGAEgASgLMiAubWVtb3MuYXBpLnYxLlRyYW5zY3JpcHRpb25BdWRpb0ID4EECIncKElRyYW5zY3JpcHRpb25BdWRpbxIWCgdjb250ZW50GAEgASgMQgPgQQRIABINCgN1cmkYAiABKAlIABIVCghmaWxlbmFtZRgDIAEoCUID4EEBEhkKDGNvbnRlbnRfdHlwZRgEIAEoCUID4EEBQggKBnNvdXJjZSIiChJUcmFuc2NyaWJlUmVzcG9uc2USDAoEdGV4dBgBIAEoCSImChFTeW50aGVzaXplUmVxdWVzdBIRCgR0ZXh0GAEgASgJQgPgQQIiOQoSU3ludGhlc2l6ZVJlc3BvbnNlEg0KBWF1ZGlvGAEgASgMEhQKDGNvbnRlbnRfdHlwZRgCIAEoCSI8Cg9Db21wbGV0ZVJlcXVlc3QSEwoGcHJvbXB0GAEgASgJQgPgQQISFAoHY29udGVudBgCIAEoCUID4EEBIiAKEENvbXBsZXRlUmVzcG9uc2USDAoEdGV4dBgBIAEoCTL0AgoJQUlTZXJ2aWNlEnkKClRyYW5zY3JpYmUSHy5tZW1vcy5hcGkudjEuVHJhbnNjcmliZVJlcXVlc3QaIC5tZW1vcy5hcGkudjEuVHJhbnNjcmliZVJlc3BvbnNlIijaQQVhdWRpb4LT5JMCGjoBKiIVL2FwaS92MS9haTp0cmFuc2NyaWJlEngKClN5bnRoZXNpemUSHy5tZW1vcy5hcGkudjEuU3ludGhlc2l6ZVJlcXVlc3QaIC5tZW1vcy5hcGkudjEuU3ludGhlc2l6ZVJlc3BvbnNlIifaQQR0ZXh0gtPkkwIaOgEqIhUvYXBpL3YxL2FpOnN5bnRoZXNpemUScgoIQ29tcGxldGUSHS5tZW1vcy5hcGkudjEuQ29tcGxldGVSZXF1ZXN0Gh4ubWVtb3MuYXBpLnYxLkNvbXBsZXRlUmVzcG9uc2UiJ9pBBnByb21wdILT5JMCGDoBKiITL2FwaS92MS9haTpjb21wbGV0ZUKmAQoQY29tLm1lbW9zLmFwaS52MUIOQWlTZXJ2aWNlUHJvdG9QAVowZ2l0aHViLmNvbS91c2VtZW1vcy9tZW1vcy9wcm90by9nZW4vYXBpL3YxO2FwaXYxogIDTUFYqgIMTWVtb3MuQXBpLlYxygIMTWVtb3NcQXBpXFYx4gIYTWVtb3NcQXBpXFYxXEdQQk1ldGFkYXRh6gIOTWVtb3M6OkFwaTo6VjFiBnByb3RvMw", [file_google_api_annotations, file_google_api_client, file_google_api_field_behavior]);
 
 /**
  * @generated from message memos.api.v1.TranscribeRequest
@@ -146,6 +146,52 @@ export const SynthesizeResponseSchema: GenMessage<SynthesizeResponse> = /*@__PUR
   messageDesc(file_api_v1_ai_service, 4);
 
 /**
+ * @generated from message memos.api.v1.CompleteRequest
+ */
+export type CompleteRequest = Message<"memos.api.v1.CompleteRequest"> & {
+  /**
+   * Required. The user instruction for this turn (e.g. "polish this paragraph").
+   *
+   * @generated from field: string prompt = 1;
+   */
+  prompt: string;
+
+  /**
+   * Optional. Source text to transform — usually the editor selection, or the
+   * whole draft when no selection exists.
+   *
+   * @generated from field: string content = 2;
+   */
+  content: string;
+};
+
+/**
+ * Describes the message memos.api.v1.CompleteRequest.
+ * Use `create(CompleteRequestSchema)` to create a new message.
+ */
+export const CompleteRequestSchema: GenMessage<CompleteRequest> = /*@__PURE__*/
+  messageDesc(file_api_v1_ai_service, 5);
+
+/**
+ * @generated from message memos.api.v1.CompleteResponse
+ */
+export type CompleteResponse = Message<"memos.api.v1.CompleteResponse"> & {
+  /**
+   * The model's reply text. Writing-assistant responses are plain markdown.
+   *
+   * @generated from field: string text = 1;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message memos.api.v1.CompleteResponse.
+ * Use `create(CompleteResponseSchema)` to create a new message.
+ */
+export const CompleteResponseSchema: GenMessage<CompleteResponse> = /*@__PURE__*/
+  messageDesc(file_api_v1_ai_service, 6);
+
+/**
  * @generated from service memos.api.v1.AIService
  */
 export const AIService: GenService<{
@@ -168,6 +214,17 @@ export const AIService: GenService<{
     methodKind: "unary";
     input: typeof SynthesizeRequestSchema;
     output: typeof SynthesizeResponseSchema;
+  },
+  /**
+   * Complete runs one writing-assistant turn against an OpenAI-compatible
+   * chat-completions endpoint configured on the instance.
+   *
+   * @generated from rpc memos.api.v1.AIService.Complete
+   */
+  complete: {
+    methodKind: "unary";
+    input: typeof CompleteRequestSchema;
+    output: typeof CompleteResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_api_v1_ai_service, 0);
