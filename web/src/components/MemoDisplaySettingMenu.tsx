@@ -1,6 +1,6 @@
 import { useDirection } from "@base-ui/react/direction-provider";
 import { Columns2Icon, Columns3Icon, InfinityIcon, type LucideIcon, Rows3Icon, SlidersHorizontalIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { SIDEBAR_SECTION_ACTION_ICON_CLASSES } from "@/components/AppSidebar/SidebarSection";
 import { buttonVariants } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -187,9 +187,20 @@ function MemoDisplaySettingsContent() {
 
 function MemoDisplaySettingMenu({ className }: Props) {
   const t = useTranslate();
+  const [open, setOpen] = useState(false);
+
+  // Non-modal settings popup: close as soon as the page scrolls so the absolute
+  // positioner does not chase the sidebar trigger through a long memo list
+  // (that tracking loop is what made the feed jitter while the menu stayed open).
+  useEffect(() => {
+    if (!open) return;
+    const closeOnScroll = () => setOpen(false);
+    window.addEventListener("scroll", closeOnScroll, { passive: true, capture: true });
+    return () => window.removeEventListener("scroll", closeOnScroll, { capture: true });
+  }, [open]);
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <Tooltip>
         <TooltipTrigger render={<span className="inline-flex" />}>
           <PopoverTrigger
@@ -201,7 +212,15 @@ function MemoDisplaySettingMenu({ className }: Props) {
         </TooltipTrigger>
         <TooltipContent side="top">{t("memo.view-options")}</TooltipContent>
       </Tooltip>
-      <PopoverContent align="end" sideOffset={6} aria-label={t("memo.view-options")} className="w-64 p-0">
+      <PopoverContent
+        align="end"
+        sideOffset={6}
+        // Fixed keeps the panel viewport-anchored; absolute (the Base UI default)
+        // repositions on every list scroll and fights content-visibility reflows.
+        positionMethod="fixed"
+        aria-label={t("memo.view-options")}
+        className="w-64 p-0"
+      >
         <MemoDisplaySettingsContent />
       </PopoverContent>
     </Popover>

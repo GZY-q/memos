@@ -16,6 +16,13 @@ import type { CSSProperties } from "react";
 /** Above this many flow cards, also apply `contain: content`. */
 export const FLOW_CONTAIN_THRESHOLD = 40;
 
+/**
+ * First-layout guess for `contain-intrinsic-size`. Compact cards clamp around
+ * ~400px (preview + fade + show-more); using a closer default shrinks the
+ * scrollbar jump when offscreen cards first enter the viewport.
+ */
+export const FLOW_CONTAIN_INTRINSIC_BLOCK_SIZE = 400;
+
 export const shouldUseFlowContain = (itemCount: number, threshold: number = FLOW_CONTAIN_THRESHOLD): boolean => itemCount >= threshold;
 
 /**
@@ -24,6 +31,6 @@ export const shouldUseFlowContain = (itemCount: number, threshold: number = FLOW
  */
 export const flowCardContainStyle = (itemCount: number, threshold: number = FLOW_CONTAIN_THRESHOLD): CSSProperties => ({
   contentVisibility: "auto",
-  containIntrinsicBlockSize: "auto 240px",
+  containIntrinsicBlockSize: `auto ${FLOW_CONTAIN_INTRINSIC_BLOCK_SIZE}px`,
   ...(shouldUseFlowContain(itemCount, threshold) ? { contain: "content" } : {}),
 });

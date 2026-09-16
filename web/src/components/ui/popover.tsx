@@ -12,33 +12,41 @@ const PopoverTrigger = React.forwardRef<HTMLButtonElement, PopoverPrimitive.Trig
 });
 PopoverTrigger.displayName = "PopoverTrigger";
 
-const PopoverContent = React.forwardRef<
-  HTMLDivElement,
-  PopoverPrimitive.Popup.Props & Pick<PopoverPrimitive.Positioner.Props, "align" | "alignOffset" | "side" | "sideOffset">
->(({ className, align = "center", alignOffset, side, sideOffset = 4, ...props }, ref) => {
-  return (
-    <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Positioner
-        align={align}
-        alignOffset={alignOffset}
-        side={side}
-        sideOffset={sideOffset}
-        className="isolate z-dropdown"
-      >
-        <PopoverPrimitive.Popup
-          ref={ref}
-          data-slot="popover-content"
-          className={cn(
-            "bg-popover text-popover-foreground z-dropdown w-auto origin-(--transform-origin) rounded-md border p-1 shadow-md outline-hidden",
-            popupMotionClasses,
-            className,
-          )}
-          {...props}
-        />
-      </PopoverPrimitive.Positioner>
-    </PopoverPrimitive.Portal>
-  );
-});
+type PopoverContentProps = PopoverPrimitive.Popup.Props &
+  Pick<
+    PopoverPrimitive.Positioner.Props,
+    "align" | "alignOffset" | "side" | "sideOffset" | "positionMethod" | "sticky" | "disableAnchorTracking"
+  >;
+
+const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
+  ({ className, align = "center", alignOffset, side, sideOffset = 4, positionMethod, sticky, disableAnchorTracking, ...props }, ref) => {
+    return (
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Positioner
+          align={align}
+          alignOffset={alignOffset}
+          side={side}
+          sideOffset={sideOffset}
+          positionMethod={positionMethod}
+          sticky={sticky}
+          disableAnchorTracking={disableAnchorTracking}
+          className="isolate z-dropdown"
+        >
+          <PopoverPrimitive.Popup
+            ref={ref}
+            data-slot="popover-content"
+            className={cn(
+              "bg-popover text-popover-foreground z-dropdown w-auto origin-(--transform-origin) rounded-md border p-1 shadow-md outline-hidden",
+              popupMotionClasses,
+              className,
+            )}
+            {...props}
+          />
+        </PopoverPrimitive.Positioner>
+      </PopoverPrimitive.Portal>
+    );
+  },
+);
 PopoverContent.displayName = "PopoverContent";
 
 export { Popover, PopoverContent, PopoverTrigger };

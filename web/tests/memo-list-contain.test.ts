@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { FLOW_CONTAIN_THRESHOLD, flowCardContainStyle, shouldUseFlowContain } from "@/components/PagedMemoList/flowContain";
+import {
+  FLOW_CONTAIN_INTRINSIC_BLOCK_SIZE,
+  FLOW_CONTAIN_THRESHOLD,
+  flowCardContainStyle,
+  shouldUseFlowContain,
+} from "@/components/PagedMemoList/flowContain";
 
 describe("flow contain threshold", () => {
   it("stays off below the threshold", () => {
@@ -17,10 +22,11 @@ describe("flow contain threshold", () => {
   it("always keeps content-visibility for offscreen paint skip", () => {
     const small = flowCardContainStyle(1);
     const large = flowCardContainStyle(500);
+    const expected = `auto ${FLOW_CONTAIN_INTRINSIC_BLOCK_SIZE}px`;
     expect(small.contentVisibility).toBe("auto");
     expect(large.contentVisibility).toBe("auto");
-    expect(small.containIntrinsicBlockSize).toBe("auto 240px");
-    expect(large.containIntrinsicBlockSize).toBe("auto 240px");
+    expect(small.containIntrinsicBlockSize).toBe(expected);
+    expect(large.containIntrinsicBlockSize).toBe(expected);
   });
 
   it("accepts a custom threshold", () => {
