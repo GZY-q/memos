@@ -24,21 +24,21 @@ func TestFrontendService_CacheHeaderRules(t *testing.T) {
 		expires      string
 	}{
 		{
-			name:         "root html is not stored",
+			name:         "root html revalidates on every load",
 			path:         "/",
 			cacheControl: frontendHTMLCacheControl,
 			pragma:       "no-cache",
 			expires:      "0",
 		},
 		{
-			name:         "index html is not stored",
+			name:         "index html revalidates on every load",
 			path:         "/index.html",
 			cacheControl: frontendHTMLCacheControl,
 			pragma:       "no-cache",
 			expires:      "0",
 		},
 		{
-			name:         "spa fallback html is not stored",
+			name:         "spa fallback html revalidates on every load",
 			path:         "/memos/publicmemo",
 			cacheControl: frontendHTMLCacheControl,
 			pragma:       "no-cache",
@@ -87,21 +87,21 @@ func TestFrontendService_StaticCacheHeaders(t *testing.T) {
 		expires      string
 	}{
 		{
-			name:         "root html is not stored",
+			name:         "root html revalidates on every load",
 			path:         "/",
 			cacheControl: frontendHTMLCacheControl,
 			pragma:       "no-cache",
 			expires:      "0",
 		},
 		{
-			name:         "index html is not stored",
+			name:         "index html revalidates on every load",
 			path:         "/index.html",
 			cacheControl: frontendHTMLCacheControl,
 			pragma:       "no-cache",
 			expires:      "0",
 		},
 		{
-			name:         "spa fallback html is not stored",
+			name:         "spa fallback html revalidates on every load",
 			path:         "/memos/publicmemo",
 			cacheControl: frontendHTMLCacheControl,
 			pragma:       "no-cache",
