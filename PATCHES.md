@@ -476,6 +476,43 @@ changing mount behaviour.
 - **Upstream risk**: low. One additive helper + one style swap in the flow
   branch. Tests: `web/tests/memo-list-contain.test.ts`.
 
+## Patch 20: first-paint startup optimization (wave3)
+
+Measured against `notebook.gede.asia`: the SPA shipped ~2.7MB of **uncompressed**
+JS/CSS on first load, and CodeMirror was in the critical path.
+
+- `web/src/components/MemoEditor/LazyMemoEditor.tsx` (new) — renders a
+  same-shape placeholder, then loads the real editor through the existing
+  `loadMemoEditor` dynamic import. Replaces the four static `MemoEditor`
+  importers: `pages/Home.tsx`, `JournalView`, `CalendarView/DayPanel`,
+  `MapView/MapView`.
+- `web/vite.config.mts` — KaTeX split out of `markdown-vendor` (the `rehype-`
+  chunk rule was pulling it in) into its own `math-vendor` group, plus
+  `build.modulePreload.resolveDependencies` to keep lazily-imported chunks
+  (editor / math / leaflet-vendor) out of the HTML `modulepreload` list.
+- `web/index.html` + `web/src/components/SplashScreen.tsx` (new) — inline
+  splash keyed off the stored theme so the first frame is painted before React
+  mounts; `main.tsx` renders `SplashScreen` instead of `return null` while
+  auth/instance resolve, and preloads the Home chunk in parallel.
+- `server/router/frontend/frontend.go` — HTML `Cache-Control` relaxed from
+  `no-store` to `no-cache` (restores bfcache); hashed assets now
+  `max-age=31536000, immutable`.
+- `web/public/sw.js` — `/assets/` hashed assets are cache-first (v2);
+  navigations stay network-first and API/SSE are still never cached.
+
+- **Reason**: first-paint latency. Server/API latency was never the bottleneck
+  (TTFB ~190ms); transfer size and the editor chunk were.
+- **Upstream risk**: low-medium. `LazyMemoEditor` is a new wrapper (call sites
+  keep the same props), but it does change mount timing — tests that asserted
+  synchronous editor mount were updated. The cache-header and SW changes are
+  behaviour-visible on deploy; verify `Cache-Control` after release.
+- **Tests**: `web/tests/lazy-memo-editor.test.tsx` (new),
+  `home-loading-boundary.test.tsx` and `map-view.test.tsx` updated for async
+  editor mount.
+- **Deploy note**: compression still has to be enabled at the reverse proxy
+  (`encode zstd gzip` in Caddy) — the Go server does not gzip. Without it the
+  code-side savings are roughly half of the goal.
+
 ## Repo hygiene notes (local only)
 
 Local runtime artifacts must stay out of git:

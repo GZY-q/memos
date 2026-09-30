@@ -23,6 +23,7 @@ Memos is a self-hosted note-taking app.
 | SQLite FTS5 | `store/migration/sqlite/0.31/07__memo_fts.sql`, `internal/filter/render.go` | trigram `content.contains` path. |
 | PG/MySQL content indexes | `0.31/08__memo_content_*.sql` | pg_trgm GIN; MySQL ngram FULLTEXT used by MATCH path. |
 | Filter search paths | `internal/filter/render.go` | MySQL ngram MATCH (≥2 runes); `attachment_filename` / `comment` EXISTS. |
+| Startup performance | `web/vite.config.mts`, `web/src/components/MemoEditor/LazyMemoEditor.tsx`, `web/src/components/SplashScreen.tsx`, `web/src/main.tsx`, `web/index.html`, `web/public/sw.js`, `server/router/frontend/frontend.go` | editor-vendor/math-vendor split out of the HTML preload list (`modulePreload.resolveDependencies`); editor mounts via `LazyMemoEditor`; inline splash + landing-route preload; HTML `no-cache` (bfcache-friendly), hashed assets 1y immutable, SW cache-first for `/assets/`. |
 | Repo hygiene | `.gitignore` | Never commit `*.db`, `.playwright-cli/`, or `server/router/frontend/dist/`. |
 
 When rebasing upstream, re-read `PATCHES.md` first.

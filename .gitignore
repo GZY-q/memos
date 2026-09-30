@@ -33,5 +33,8 @@ dist/
 # Browser automation scratch (screenshots, console dumps).
 .playwright-cli/
 
+# WorkBuddy session data (memory logs, task state).
+.workbuddy/
+
 # Local marketing/dev screenshots that are not build inputs.
 frontend.png

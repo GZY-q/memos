@@ -21,9 +21,11 @@ import (
 var embeddedFiles embed.FS
 
 const (
-	frontendHTMLCacheControl        = "no-cache, no-store, must-revalidate"
+	// HTML revalidates every load but stays storable, so the browser can use
+	// bfcache and avoid a full re-download on back/forward navigation.
+	frontendHTMLCacheControl        = "no-cache"
 	frontendStaticAssetCacheControl = "public, max-age=3600"
-	frontendHashedAssetCacheControl = "public, max-age=2592000, immutable"
+	frontendHashedAssetCacheControl = "public, max-age=31536000, immutable"
 )
 
 type FrontendService struct {

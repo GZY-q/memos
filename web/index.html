@@ -2,9 +2,6 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/webp" href="/logo.webp" />
     <link rel="manifest" href="/site.webmanifest" />
@@ -17,7 +14,38 @@
     <title>Memos</title>
   </head>
   <body class="text-base w-full min-h-svh">
-    <div id="root" class="relative w-full min-h-full"></div>
+    <div id="root" class="relative w-full min-h-full">
+      <!-- Inline splash: shown from first HTML paint until React mounts. Replaced
+           by the identical React SplashScreen during initialization. -->
+      <div id="memos-splash" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#faf9f5;z-index:50;">
+        <img src="/logo.webp" alt="" width="72" height="72" style="animation:memosSplashPulse 1.4s ease-in-out infinite;" />
+      </div>
+    </div>
+    <style>
+      @keyframes memosSplashPulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+    </style>
+    <script>
+      // Match the splash background to the user's stored theme before first paint.
+      (function () {
+        try {
+          var theme = localStorage.getItem("memos-theme") || "system";
+          if (theme === "system") {
+            theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "default-dark" : "default";
+          }
+          var colors = { default: "#faf9f5", "default-dark": "#1d1f23", paper: "#f5ede4" };
+          var splash = document.getElementById("memos-splash");
+          if (splash && colors[theme]) splash.style.background = colors[theme];
+        } catch (e) {}
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
     <!-- memos.metadata.body -->
   </body>

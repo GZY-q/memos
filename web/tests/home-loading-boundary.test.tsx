@@ -8,7 +8,7 @@ const state = vi.hoisted(() => ({
   listProps: undefined as Record<string, unknown> | undefined,
 }));
 
-vi.mock("@/components/MemoEditor", () => ({
+vi.mock("@/components/MemoEditor/LazyMemoEditor", () => ({
   default: (props: Record<string, unknown>) => {
     state.editorProps = props;
     return <div data-testid="memo-editor" />;

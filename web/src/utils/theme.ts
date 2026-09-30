@@ -24,7 +24,7 @@ const THEME_CONTENT: Record<ResolvedTheme, string | null> = {
   paper: paperThemeContent,
 };
 
-const THEME_COLORS: Record<ResolvedTheme, string> = {
+export const THEME_COLORS: Record<ResolvedTheme, string> = {
   default: "#faf9f5",
   "default-dark": "#1d1f23",
   paper: "#f5ede4",

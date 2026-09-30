@@ -43,6 +43,18 @@ export default defineConfig({
     },
   },
   build: {
+    modulePreload: {
+      resolveDependencies: (_filename, deps, { hostType }) => {
+        // Rolldown lists statically-analyzable dynamic-import dependencies in the
+        // HTML preload list. Heavy vendor chunks that are only consumed lazily
+        // (CodeMirror editor, KaTeX math) must not be preloaded with the shell —
+        // they are fetched on demand when their dynamic importer actually runs.
+        if (hostType === "html") {
+          return deps.filter((dep) => !/(?:editor-vendor|math-vendor|leaflet-vendor)-[\w-]+\.js$/.test(dep));
+        }
+        return deps;
+      },
+    },
     rolldownOptions: {
       output: {
         codeSplitting: {
@@ -56,6 +68,13 @@ export default defineConfig({
               test: /node_modules[\\/]leaflet([\\/]|$)/,
             },
             {
+              // Math stack is only used by the lazily-loaded MathMarkdownRenderer.
+              // It must stay out of markdown-vendor (the group below would otherwise
+              // capture rehype-katex and drag all of KaTeX into the initial bundle).
+              name: "math-vendor",
+              test: /node_modules[\\/](katex|rehype-katex|remark-math|mdast-util-math|micromark-extension-math)([\\/]|$)/,
+            },
+            {
               // Stable vendor chunks: app-code deploys keep the same content hash
               // so browsers can reuse the cached React/markdown libraries.
               name: "react-vendor",
@@ -67,7 +86,9 @@ export default defineConfig({
             },
             {
               name: "markdown-vendor",
-              test: /node_modules[\\/](react-markdown|unified|micromark|mdast-util|unist-util-visit|remark-|rehype-)/,
+              // Negative lookahead keeps the math-only packages in math-vendor even
+              // if group precedence changes.
+              test: /node_modules[\\/](?!(?:katex|rehype-katex|remark-math|mdast-util-math|micromark-extension-math)[\\/])(?:react-markdown|unified|micromark|mdast-util|unist-util-visit|remark-|rehype-)/,
             },
             {
               name: "editor-vendor",

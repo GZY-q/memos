@@ -5,7 +5,7 @@ import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState }
 import { toast } from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 import { MentionResolutionProvider } from "@/components/MemoContent/MentionResolutionContext";
-import MemoEditor from "@/components/MemoEditor";
+import LazyMemoEditor from "@/components/MemoEditor/LazyMemoEditor";
 import { getLocationDisplayText } from "@/components/MemoMetadata/Location/locationHelpers";
 import MemoView from "@/components/MemoView";
 import { createMemoNavigationState } from "@/components/MemoView/navigation";
@@ -184,7 +184,7 @@ export function MapView() {
       {composeLocation &&
         isUserSettingsInitialized &&
         (composing ? (
-          <MemoEditor
+          <LazyMemoEditor
             key={selectedKey}
             cacheKey={`map-editor:${user?.name}:${selectedSpaceName ?? "all"}:${locationKey(composeLocation)}`}
             defaultLocation={composeLocation}

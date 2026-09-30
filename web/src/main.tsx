@@ -8,6 +8,7 @@ import { RouterProvider } from "react-router-dom";
 import "./i18n";
 import "./index.css";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import SplashScreen from "@/components/SplashScreen";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { refreshAccessToken } from "@/connect";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -24,6 +25,17 @@ import { applyThemeEarly } from "./utils/theme";
 // Apply theme and locale early to prevent flash
 applyThemeEarly();
 applyLocaleEarly();
+
+// Fetch the landing route chunk in parallel with identity/profile
+// initialization below, so first paint is not serialized: without this the
+// browser only discovers the Home chunk after auth round-trips complete.
+const preloadLandingRoute = () => {
+  const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (path === "/" || path === "/home") {
+    void import("@/pages/Home").catch(() => undefined);
+  }
+};
+preloadLandingRoute();
 
 // Inner component that initializes contexts
 function AppInitializer({ children }: { children: React.ReactNode }) {
@@ -57,7 +69,7 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
   // instance profile. Display-sensitive settings continue in the background;
   // PagedMemoList keeps memo content hidden until privacy settings have settled.
   if (!isIdentityInitialized || !isProfileInitialized) {
-    return null;
+    return <SplashScreen />;
   }
 
   return <>{children}</>;

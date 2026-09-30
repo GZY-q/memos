@@ -54,13 +54,15 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-function start() {
+async function start() {
   render(
     <MemoryRouter initialEntries={["/spaces/travel/map?lat=35&lng=135&zoom=12&memo=memos%2Fone"]}>
       <MapView />
     </MemoryRouter>,
   );
   fireEvent.click(screen.getByText("map.new-here"));
+  // The composer is lazy-loaded; wait for the editor chunk to resolve.
+  await screen.findByTestId("editor");
 }
 
 describe("map composer", () => {
@@ -77,7 +79,7 @@ describe("map composer", () => {
   });
   it("seeds the selected point and Space and releases controls after save", async () => {
     mocks.refetch.mockResolvedValue({ data: { pages: [{ memos: [item] }] } });
-    start();
+    await start();
     expect(mocks.editor.defaultSpace).toBe("spaces/travel");
     expect(mocks.editor.defaultLocation).toEqual(item.location);
     act(() => mocks.editor.onSavingChange?.(true));
@@ -88,7 +90,7 @@ describe("map composer", () => {
   });
   it("offers a working action when the saved memo falls outside the filter", async () => {
     mocks.refetch.mockResolvedValue({ data: { pages: [{ memos: [] }] } });
-    start();
+    await start();
     act(() => mocks.editor.onConfirm?.("memos/outside"));
     await waitFor(() => expect(mocks.toast).toHaveBeenCalled());
     // Toasts render outside the router; the action must not require router context.
@@ -98,7 +100,7 @@ describe("map composer", () => {
   });
   it("reports refresh failure without claiming the saved memo is outside the filter", async () => {
     mocks.refetch.mockResolvedValue({ isError: true });
-    start();
+    await start();
     act(() => mocks.editor.onConfirm?.("memos/saved"));
     await waitFor(() => expect(mocks.toast).toHaveBeenCalled());
     render(mocks.toast.mock.calls[0][0]({ id: "saved" }));

@@ -1,11 +1,12 @@
 /**
  * Minimal offline shell for the Memos SPA.
  *
- * Strategy: network-first for navigations and hashed assets, with a short-lived
- * cache fallback so a flaky network still opens the app. API/SSE/RPC calls are
- * never cached — auth and freshness must stay server-authoritative.
+ * Strategy: hashed /assets/ are content-addressed and immutable, so they are
+ * served cache-first. Navigations and other shell files stay network-first
+ * with a cache fallback so a flaky network still opens the app. API/SSE/RPC
+ * calls are never cached — auth and freshness must stay server-authoritative.
  */
-const CACHE_NAME = "memos-shell-v1";
+const CACHE_NAME = "memos-shell-v2";
 const SHELL_URLS = ["/", "/logo.webp", "/site.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -42,7 +43,26 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (!isShellRequest(request)) return;
 
+  const url = new URL(request.url);
   const isNavigation = request.mode === "navigate";
+
+  // Hashed assets are immutable by contract: cache-first, no network round-trip.
+  if (url.pathname.startsWith("/assets/")) {
+    event.respondWith(
+      caches.match(request).then(
+        (cached) =>
+          cached ??
+          fetch(request).then((response) => {
+            if (response && response.ok) {
+              const copy = response.clone();
+              void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+            }
+            return response;
+          }),
+      ),
+    );
+    return;
+  }
 
   event.respondWith(
     fetch(request)

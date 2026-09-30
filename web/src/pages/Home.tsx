@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import MemoEditor from "@/components/MemoEditor";
+import LazyMemoEditor from "@/components/MemoEditor/LazyMemoEditor";
 import { deriveDefaultCreateTimeFromFilters } from "@/components/MemoEditor/utils/deriveDefaultCreateTime";
 import MemoView from "@/components/MemoView";
 import PagedMemoList, { getMemoKey } from "@/components/PagedMemoList";
@@ -53,7 +53,7 @@ const Home = () => {
             if (!isUserSettingsInitialized) return null;
 
             return (
-              <MemoEditor
+              <LazyMemoEditor
                 key={editorCacheKey}
                 autoFocus={claimHomeAutoFocus}
                 className={useGrid ? undefined : "mb-2"}

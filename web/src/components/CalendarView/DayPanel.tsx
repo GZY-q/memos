@@ -2,7 +2,7 @@ import { PlusIcon, XIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MentionResolutionProvider } from "@/components/MemoContent/MentionResolutionContext";
-import MemoEditor from "@/components/MemoEditor";
+import LazyMemoEditor from "@/components/MemoEditor/LazyMemoEditor";
 import { deriveDefaultCreateTimeFromDate } from "@/components/MemoEditor/utils/deriveDefaultCreateTime";
 import MemoView from "@/components/MemoView";
 import { buttonVariants } from "@/components/ui/button";
@@ -84,7 +84,7 @@ export const DayPanel = ({ date, memos, onClose }: DayPanelProps) => {
         </MentionResolutionProvider>
         {isUserSettingsInitialized &&
           (composing ? (
-            <MemoEditor
+            <LazyMemoEditor
               cacheKey={`calendar-day-editor:${date}`}
               autoFocus
               placeholder={t("editor.any-thoughts")}

@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { MentionResolutionProvider } from "@/components/MemoContent/MentionResolutionContext";
-import MemoEditor from "@/components/MemoEditor";
+import LazyMemoEditor from "@/components/MemoEditor/LazyMemoEditor";
 import { deriveDefaultCreateTimeFromDate } from "@/components/MemoEditor/utils/deriveDefaultCreateTime";
 import MemoView from "@/components/MemoView";
 import { buttonVariants } from "@/components/ui/button";
@@ -112,7 +112,7 @@ export const JournalView = ({ date }: JournalViewProps) => {
 
       <NewMemoProvider>
         {isUserSettingsInitialized && (
-          <MemoEditor
+          <LazyMemoEditor
             cacheKey={`journal-editor:${selectedSpaceName ?? "global"}:${date}`}
             autoFocus={false}
             placeholder={t("journal.composer-placeholder")}
